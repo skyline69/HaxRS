@@ -1,22 +1,11 @@
-use std::net::{TcpStream, ToSocketAddrs};
-use std::env;
+mod behind;
 
-fn scan<T: ToSocketAddrs>(addr: T) {
-    let stream= TcpStream::connect(addr);
-    match stream {
-        Ok(_) => {
-            println!("Open");
-        }
-        Err(e) => println!("Closed, {}", e),
-    }
-}
+use behind::cli;
+
+
 
 fn main() {
-    let args: Vec<String> = env::args().collect();
-    if args.len() != 3 {
-        eprintln!("Usage: <address> <port>");
-        std::process::exit(1);
-    }
-    let address: String = format!("{}:{}", &args[1], &args[2]);
-    scan(address);
+    cli::clear_terminal();
+    //cli::print_menu_table();
+    cli::print_login_logo()
 }
