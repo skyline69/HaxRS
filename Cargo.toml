@@ -1,0 +1,16 @@
+[package]
+name = "haxrs"
+version = "0.1.0"
+edition = "2021"
+authors = ["skyline"]
+license = "MIT"
+description = "Hax is a mini-tool with really useful hacking tools."
+repository = "https://github.com/skyline69/HaxRS"
+readme = "README.md"
+homepage = "https://skyline69.live"
+categories = ["hacking", "tools", "cli"]
+keywords = ["hacking", "tools", "cli"]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
