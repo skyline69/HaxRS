@@ -10,7 +10,7 @@
 <br>
 
 ![9aad62f6a86fa29a5bde2ab9f647d22c](https://user-images.githubusercontent.com/67526259/236649115-7c9dc679-53dc-416c-935c-07961eac59d2.png)
-### - Portscanner(Powered by nmap) ✅
+### - Portscanner(Powered by nmap) ✅ (WIP 🚧)
 ### - URL-Masker ☑️ (WIP 🚧)
 ### - Phisher(Powered by ZPhisher) ☑️
 ## Building from source
