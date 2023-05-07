@@ -13,7 +13,6 @@
 ### - Portscanner(Powered by nmap) ✅ (WIP 🚧)
 ### - URL-Masker ☑️ (WIP 🚧)
 ### - Phisher(Powered by ZPhisher) ☑️
-## Building from source
-> Reminder: move the `nmap-bin` folder to the build folder, or else it won't work.
+---
 ## Notes
 For Linux Enthusiasts: You **need** to install **`nmap`**.
