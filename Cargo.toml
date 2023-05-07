@@ -2,25 +2,33 @@
 name = "haxrs"
 version = "0.1.0"
 edition = "2021"
-authors = ["skyline"]
-license = "MIT"
+authors = ["skyline <efedasguney@protonmail.com>"]
+license-file = "LICENSE"
 description = "Hax is a mini-tool with really useful hacking tools."
 repository = "https://github.com/skyline69/HaxRS"
 readme = "README.md"
 homepage = "https://skyline69.live"
 categories = ["hacking", "tools", "cli"]
 keywords = ["hacking", "tools", "cli"]
+publish = false
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
 
 [dependencies]
 clearscreen = { version = "2.0.1", features = ["windows-console"] }
 colored = "2.0.0"
+crossterm = "0.26.1"
 ping = "0.4.1"
 reqwest = { version = "0.11.17", features = ["json", "blocking"] }
 serde_json = "1.0.96"
 socket2 = "0.5.2"
 tokio = { version =  "1.28.0", features = ["full"] }
+
+
+
+[build-dependencies]
+winres = "0.1.12"
+
 
 [profile.release]
 opt-level = 3
@@ -28,3 +36,5 @@ debug-assertions = false
 overflow-checks = false
 lto = true
 debug = false
+
+
