@@ -20,7 +20,49 @@
 
 > For Linux Enthusiasts: You **need** to install **`nmap`**.
 
-### Examples of installation
+## How to install and build HaxRS on Linux
+### Step 1: Install Rust (If you haven't already)
+1. Open the terminal by pressing `Ctrl + Alt + T` or searching for "Terminal" in the application menu.
+2. Install Rust by running the following command:
+```bash
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+```
+3. Verify the installation by running the following command:
+```bash
+rustc --version
+```
+### Step 2: Install nmap (If you haven't already)
+> Look at the <a href="#how-to-install-nmap-on-linux">here</a> for instructions on how to install nmap on your Linux distribution.
+### Step 3: Clone the repository
+1. Open the terminal by pressing `Ctrl + Alt + T` or searching for "Terminal" in the application menu.
+2. Clone the repository by running the following command:
+```bash
+git clone https://github.com/skyline69/HaxRS.git
+```
+### Step 4: Build the project
+1. Open the terminal by pressing `Ctrl + Alt + T` or searching for "Terminal" in the application menu.
+2. Navigate to the project directory by running the following command:
+```bash
+cd HaxRS
+```
+3. Build the project by running the following command:
+```bash
+cargo build --release
+```
+### Step 5: Run the project
+1. Open the terminal by pressing `Ctrl + Alt + T` or searching for "Terminal" in the application menu.
+2. Navigate to the project directory by running the following command:
+```bash
+cd HaxRS
+```
+3. Run the project by executing the following command:
+```bash
+./target/release/haxrs
+```
+
+---
+
+### Examples of `nmap` installation
 - <a href="#ubuntu">Ubuntu</a>
 - <a href="#debian">Debian</a>
 - <a href="#arch-linux">Arch Linux</a>
