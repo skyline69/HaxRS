@@ -13,9 +13,12 @@
 ### - Port-scanner(Powered by nmap) ✅ (WIP 🚧)
 ### - URL-Masker ☑️ (WIP 🚧)
 ### - Phisher(Powered by ZPhisher) ☑️
----
-## Notes
-For Linux Enthusiasts: You **need** to install **`nmap`**.
+<br><br>
+
+<img src="https://user-images.githubusercontent.com/67526259/236820904-73b10112-6094-4938-9d89-85d9cf7811d5.png" alt="For Linux">
+<br>
+
+> For Linux Enthusiasts: You **need** to install **`nmap`**.
 
 ## How to install `nmap` on Linux
 ### Ubuntu
