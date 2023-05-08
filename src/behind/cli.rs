@@ -38,8 +38,8 @@ pub (crate) fn menu_table() {
         selection = selection.trim().to_string();
         match selection.as_str() {
             "1" => selection_1(),
-            "2" => todo!("Phisher"),
-            "3" => todo!("URL-masker"),
+            "2" => println!("{}", "This feature isn't available yet.".red()),
+            "3" => println!("{}", "This feature isn't available yet.".red()),
             "exit" => std::process::exit(0),
             "clear" => menu_table_select(),
             "menu" => menu_table(),

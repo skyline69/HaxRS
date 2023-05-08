@@ -8,7 +8,7 @@ use std::io::Write;
 use std::net::IpAddr;
 use colored::*;
 use crate::behind::cli::{error_msg, success_msg};
-
+use std::env;
 
 fn is_ip_reachable(ip: &str) -> bool {
     ip.parse::<IpAddr>().is_ok()
@@ -100,14 +100,26 @@ fn parse_nmap_output(output: &str) -> HashSet<u16> {
 }
 
 fn run_nmap_scan(ip: &str) -> Result<String, Box<dyn std::error::Error>> {
-    let nmap_path = std::env::current_dir()?.join("nmap-bin").join("nmap.exe");
-    let output = Command::new(nmap_path)
-        .arg("-Pn")
-        .arg("-p")
-        .arg("22-443")
-        .arg(ip)
-        .output()?;
-    let output_str = String::from_utf8_lossy(&output.stdout).into_owned();
+    if env::consts::OS == "windows" {
+        let nmap_path = env::current_dir()?.join("nmap-bin").join("nmap.exe");
+        let output = Command::new(nmap_path)
+            .arg("-Pn")
+            .arg("-p")
+            .arg("22-443")
+            .arg(ip)
+            .output()?;
+        let output_str = String::from_utf8_lossy(&output.stdout).into_owned();
 
-    Ok(output_str)
+        Ok(output_str)
+    } else {
+        let output = Command::new("nmap")
+            .arg("-Pn")
+            .arg("-p")
+            .arg("22-443")
+            .arg(ip)
+            .output()?;
+        let output_str = String::from_utf8_lossy(&output.stdout).into_owned();
+
+        Ok(output_str)
+    }
 }
