@@ -20,6 +20,15 @@
 
 > For Linux Enthusiasts: You **need** to install **`nmap`**.
 
+### Examples of installation
+- <a href="#ubuntu">Ubuntu</a>
+- <a href="#debian">Debian</a>
+- <a href="#arch-linux">Arch Linux</a>
+- <a href="#fedora">Fedora</a>
+- <a href="#centos">CentOS</a>
+- <a href="#opensuse">OpenSUSE</a>
+- <a href="#gentoo">Gentoo</a>
+
 ## How to install `nmap` on Linux
 ### Ubuntu
 1. Open the terminal by pressing `Ctrl + Alt + T` or searching for "Terminal" in the application menu.
