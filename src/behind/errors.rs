@@ -6,6 +6,7 @@ pub enum VersionCheckError {
     ReqwestError(reqwest::Error),
     SerdeJsonError(serde_json::Error),
     VersionNotFound,
+    VersionParseError(semver::Error),
 }
 
 #[derive(Debug)]
@@ -59,6 +60,10 @@ impl fmt::Display for VersionCheckError {
                 log::error!("Version not found in the provided JSON");
                 write!(f, "Version not found in the provided JSON")
             },
+            VersionCheckError::VersionParseError(err) => {
+                log::error!("Version parse error: {}", err);
+                write!(f, "Version parse error: {}", err)
+            },
         }
     }
 }
@@ -74,5 +79,11 @@ impl From<reqwest::Error> for VersionCheckError {
 impl From<serde_json::Error> for VersionCheckError {
     fn from(err: serde_json::Error) -> VersionCheckError {
         VersionCheckError::SerdeJsonError(err)
+    }
+}
+
+impl From<semver::Error> for VersionCheckError {
+    fn from(err: semver::Error) -> VersionCheckError {
+        VersionCheckError::VersionParseError(err)
     }
 }

@@ -72,7 +72,10 @@ pub(crate) fn menu_table() -> Result<(), TerminalError> {
                 println!("{}", "This feature isn't available yet.".red());
                 Ok(())
             }
-            Command::Selection3 => Ok(selection_3()),
+            Command::Selection3 => {
+                selection_3();
+                Ok(())
+            },
             Command::Exit => std::process::exit(0),
             Command::Clear => {
                 menu_table_select();

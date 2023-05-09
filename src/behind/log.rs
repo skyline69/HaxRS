@@ -25,6 +25,7 @@ pub(crate) fn log_init() {
                 .build(LevelFilter::Info),
         )
         .unwrap();
-
+    // clear the log file on startup
+    std::fs::write(format!("log/execution-{}.log", date), "").unwrap();
     log4rs::init_config(config).unwrap();
 }

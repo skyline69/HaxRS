@@ -1,7 +1,7 @@
 use std::time::Instant;
 use std::collections::HashSet;
 use reqwest::blocking::Client;
-use serde_json::Value;
+use serde_json::{Value, to_string_pretty};
 use std::process::Command;
 use std::io;
 use std::io::Write;
@@ -44,7 +44,7 @@ pub (crate) fn selection_1() -> Result<(), TerminalError> {
         .unwrap();
 
     let rg: Value = response.json().unwrap();
-    log::info!("IP geolocation information JSON: {}", rg);
+    log::info!("IP geolocation information JSON: {}", to_string_pretty(&rg).unwrap());
     println!("{}", "LOG: Running Nmap scan... (This could take a while.)".dimmed()); // Log message
     let nmap_result = match run_nmap_scan(&ip_inp) {
         Ok(result) => result,

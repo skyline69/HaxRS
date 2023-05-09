@@ -1,12 +1,13 @@
 use colored::Colorize;
 use reqwest::blocking::Client;
-use serde_json::Value;
+use serde_json::{Value, to_string_pretty};
 use crate::behind::constants::{GITHUB_API_LATEST_RELEASE, USER_AGENT, VERSION};
 use crate::behind::errors::VersionCheckError;
-
+use semver::Version;
 
 pub(crate) fn check_update() -> Result<(), VersionCheckError> {
-    if let Some(latest_version) = update_to_latest_version()? {
+    let result = update_to_latest_version()?;
+    if let Some(latest_version) = result {
         log::info!("Latest version: {}", latest_version[0]);
         let version: &String = &latest_version[0];
         let link: &String = &latest_version[1];
@@ -14,11 +15,11 @@ pub(crate) fn check_update() -> Result<(), VersionCheckError> {
             println!("{}\n{}: {} ({})", format!("Your Version: {}", VERSION.bold()).dimmed(), "Update available".yellow(), version.bright_yellow().bold(), link.bright_blue());
         }
     } else {
-        log::error!("Error checking latest version");
-        println!("{}: {}", "Error checking latest version".bright_red(), "Couldn't check latest version".red());
+        println!("{}", "You are using the latest version.".dimmed());
     }
     Ok(())
 }
+
 
 pub(crate) fn update_to_latest_version() -> Result<Option<Vec<String>>, VersionCheckError> {
     println!("{0}", "Checking latest version...".dimmed());
@@ -27,19 +28,21 @@ pub(crate) fn update_to_latest_version() -> Result<Option<Vec<String>>, VersionC
         .build()?;
     let response = client.get(GITHUB_API_LATEST_RELEASE).send()?;
     let json: Value = serde_json::from_str(&response.text()?)?;
-    log::info!("Latest release (JSON Response): {}", json);
-    let latest_version = json["name"]
+    log::info!("Latest release (JSON Response): {}", to_string_pretty(&json).unwrap());
+    // get version of latest release
+    let latest_version_str = json[0]["name"]
         .as_str()
         .ok_or(VersionCheckError::VersionNotFound)?;
+    // parse versions using semver
+    let latest_version = Version::parse(latest_version_str)?;
+    let current_version = Version::parse(VERSION)?;
     // get url of latest release
-    let latest_release_url = json["html_url"]
+    let latest_release_url = json[0]["html_url"]
         .as_str()
         .ok_or(VersionCheckError::VersionNotFound)?;
-    if latest_version > VERSION {
+    if latest_version > current_version {
         let result: Vec<String> = Vec::from([latest_version.to_string(), latest_release_url.to_string()]);
-        Ok(Some(result))
-    } else {
-        Ok(None)
+        return Ok(Some(result))
     }
+    Ok(None)
 }
-
