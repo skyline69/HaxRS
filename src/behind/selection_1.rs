@@ -9,31 +9,34 @@ use std::net::IpAddr;
 use colored::*;
 use crate::behind::cli::{error_msg, success_msg};
 use std::env;
+use crate::behind::errors::TerminalError;
 
 fn is_ip_reachable(ip: &str) -> bool {
     ip.parse::<IpAddr>().is_ok()
 }
 
 
-pub (crate) fn selection_1() {
+pub (crate) fn selection_1() -> Result<(), TerminalError> {
     let mut ip_inp = String::new();
     print!("\nEnter Target IP: ");
-    io::stdout().flush().expect("flush failed!");
-    io::stdin().read_line(&mut ip_inp).unwrap();
+    io::stdout().flush()?;
+    io::stdin().read_line(&mut ip_inp)?;
     ip_inp = ip_inp.trim().to_string();
-    io::stdout().flush().expect("flush failed!");
+    io::stdout().flush()?;
 
+    log::info!("IP address entered: {}", ip_inp);
     if !is_ip_reachable(&ip_inp) {
+        log::error!("IP address not reachable: {}", ip_inp);
         error_msg("IP address not reachable");
-        return;
+        return Ok(());
     }
-
 
     println!("{}", "loading...".dimmed().bold());
 
     let start_t = Instant::now();
 
     println!("{}", "LOG: Fetching IP geolocation information...".dimmed()); // Log message
+    log::info!("Fetching IP geolocation information for {}", ip_inp);
     let client = Client::new();
     let response = client
         .get(&format!("http://ip-api.com/json/{}", ip_inp))
@@ -41,13 +44,13 @@ pub (crate) fn selection_1() {
         .unwrap();
 
     let rg: Value = response.json().unwrap();
-
+    log::info!("IP geolocation information JSON: {}", rg);
     println!("{}", "LOG: Running Nmap scan... (This could take a while.)".dimmed()); // Log message
     let nmap_result = match run_nmap_scan(&ip_inp) {
         Ok(result) => result,
         Err(e) => {
             error_msg(&format!("Nmap scan failed: {}", e));
-            return;
+            return Ok(());
         }
     };
 
@@ -79,13 +82,14 @@ pub (crate) fn selection_1() {
         println!("\nTime: {}\n", format!("{:.2}m", result_t / 60.0).cyan());
     } else {
         println!("\nTime: {}\n", format!("{:.2}s", result_t).cyan());
-    }
+    };
+    Ok(())
 }
 
 fn parse_nmap_output(output: &str) -> HashSet<u16> {
     let mut open_ports = HashSet::new();
     let lines = output.lines();
-
+    log::info!("Parsing Nmap output...");
     for line in lines {
         if line.contains("open") {
             if let Some(port) = line.split('/').next() {
@@ -100,6 +104,7 @@ fn parse_nmap_output(output: &str) -> HashSet<u16> {
 }
 
 fn run_nmap_scan(ip: &str) -> Result<String, Box<dyn std::error::Error>> {
+    log::info!("Checking for nmap binary...");
     if env::consts::OS == "windows" {
         let nmap_path = env::current_dir()?.join("nmap-bin").join("nmap.exe");
         let output = Command::new(nmap_path)
@@ -109,7 +114,7 @@ fn run_nmap_scan(ip: &str) -> Result<String, Box<dyn std::error::Error>> {
             .arg(ip)
             .output()?;
         let output_str = String::from_utf8_lossy(&output.stdout).into_owned();
-
+        log::info!("Nmap scan output: {}", output_str);
         Ok(output_str)
     } else {
         let output = Command::new("nmap")
@@ -119,7 +124,7 @@ fn run_nmap_scan(ip: &str) -> Result<String, Box<dyn std::error::Error>> {
             .arg(ip)
             .output()?;
         let output_str = String::from_utf8_lossy(&output.stdout).into_owned();
-
+        log::info!("Nmap scan output: {}", output_str);
         Ok(output_str)
     }
 }

@@ -7,11 +7,13 @@ use crossterm::{
     Result,
 };
 use std::io::stdout;
-
+use crate::behind::log::log_init;
 
 fn main() -> Result<()> {
     execute!(stdout(), SetTitle("HaxRS"))?;
+    log_init();
     cli::print_login_logo();
-    cli::menu_table();
+    cli::menu_table().unwrap();
     Ok(())
 }
+
