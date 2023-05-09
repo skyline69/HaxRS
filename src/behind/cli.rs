@@ -26,7 +26,13 @@ pub enum Command {
 fn menu_table_select() {
     clear_terminal().unwrap();
     print_login_logo();
-    menu_table().unwrap();
+    match menu_table() {
+        Ok(_) => {}
+        Err(e) => {
+            error_msg(&format!("Failed to print menu table: {}", e));
+            std::process::exit(1);
+        }
+    }
 }
 
 pub fn command_input() -> Result<Command, TerminalError> {
