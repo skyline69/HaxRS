@@ -10,7 +10,7 @@ pub(crate) fn log_init() {
     let now = Local::now();
     let date = now.format("%Y-%m-%d").to_string();
 
-    let filename = format!("log/execution-{}.log", date);
+    let filename = format!("logs/execution-{}.log", date);
 
     let logfile = FileAppender::builder()
         .encoder(Box::new(PatternEncoder::new("{d} {l} - {m}\n")))
@@ -26,6 +26,6 @@ pub(crate) fn log_init() {
         )
         .unwrap();
     // clear the log file on startup
-    std::fs::write(format!("log/execution-{}.log", date), "").unwrap();
+    std::fs::write(format!("logs/execution-{}.log", date), "").unwrap();
     log4rs::init_config(config).unwrap();
 }
