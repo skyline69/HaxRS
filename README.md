@@ -10,9 +10,9 @@
 <br>
 
 ![9aad62f6a86fa29a5bde2ab9f647d22c](https://user-images.githubusercontent.com/67526259/236649115-7c9dc679-53dc-416c-935c-07961eac59d2.png)
-### - Port-scanner(Powered by nmap) ✅ (WIP 🚧)
-### - URL-Masker ☑️ (WIP 🚧)
-### - Phisher(Powered by ZPhisher) ☑️
+### - Port-scanner(Powered by nmap) ✅
+### - URL-Masker ✅
+### - Phisher(Powered by ZPhisher) ☑️(WIP 🚧)
 <br><br>
 
 <img src="https://user-images.githubusercontent.com/67526259/236820904-73b10112-6094-4938-9d89-85d9cf7811d5.png" alt="For Linux">
