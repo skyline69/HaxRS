@@ -3,7 +3,7 @@
   <br><br>
   A Remake of <a href="https://github.com/skyline69/hax">Hax</a> in Rust™
   <br><br>
-  <img src="https://user-images.githubusercontent.com/67526259/236649503-76b6b724-20e0-4684-8cac-56ff447d9ff7.png" draggable="false" width="500px" style="user-select:none;" alt="demo picture">
+  <img src="https://github.com/skyline69/HaxRS/assets/67526259/260b37b2-640a-414d-9da4-1dd90d6593d3" draggable="false" width="550px" style="user-select:none;" alt="demo picture">
 <br><br>
 </p>
 
