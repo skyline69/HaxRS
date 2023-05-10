@@ -173,3 +173,9 @@ sudo emerge net-analyzer/nmap
 ```bash
 nmap --version
 ```
+## Disclaimer
+This software is provided "as is", without warranty of any kind, express or implied, including but not limited to the warranties of merchantability, fitness for a particular purpose and noninfringement. In no event shall the author or copyright holder be liable for any claim, damages or other liability, whether in an action of contract, tort or otherwise, arising from, out of or in connection with the software or the use or other dealings in the software.
+
+Please note that this tool is meant for educational purposes only. The author or any contributors are not responsible for any actions, illegal or otherwise, performed by anyone who uses this tool. Any actions and or activities related to the material contained within this software is solely your responsibility.
+
+It is the end user's responsibility to obey all applicable local, state and federal laws. Developers assume no liability and are not responsible for any misuse or damage caused by this program.
