@@ -23,8 +23,8 @@ pub enum Command {
     Empty,
 }
 
-fn menu_table_select() {
-    clear_terminal().unwrap();
+fn menu_table_select() -> Result<(), TerminalError>{
+    clear_terminal()?;
     print_login_logo();
     match menu_table() {
         Ok(_) => {}
@@ -33,6 +33,7 @@ fn menu_table_select() {
             std::process::exit(1);
         }
     }
+    Ok(())
 }
 
 pub fn command_input() -> Result<Command, TerminalError> {
@@ -79,12 +80,12 @@ pub(crate) fn menu_table() -> Result<(), TerminalError> {
                 Ok(())
             }
             Command::Selection3 => {
-                selection_3();
+                selection_3()?;
                 Ok(())
             },
             Command::Exit => std::process::exit(0),
             Command::Clear => {
-                menu_table_select();
+                menu_table_select()?;
                 Ok(())
             }
             Command::Menu => menu_table(),

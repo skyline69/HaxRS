@@ -9,10 +9,12 @@ pub enum VersionCheckError {
     VersionParseError(semver::Error),
 }
 
+#[allow(clippy::enum_variant_names)]
 #[derive(Debug)]
 pub enum TerminalError {
     ClearError(clearscreen::Error),
     CommandIOError(std::io::Error),
+    ReqwestError(reqwest::Error),
 }
 
 impl fmt::Display for TerminalError {
@@ -25,6 +27,10 @@ impl fmt::Display for TerminalError {
             TerminalError::CommandIOError(err) => {
                 log::error!("Could not read/write to terminal: {}", err);
                 write!(f, "Could not read/write to terminal: {}", err)
+            },
+            TerminalError::ReqwestError(err) => {
+                log::error!("Request error: {}", err);
+                write!(f, "Request error: {}", err)
             },
         }
     }
@@ -42,8 +48,14 @@ impl From<std::io::Error> for TerminalError {
     fn from(err: std::io::Error) -> TerminalError {
         TerminalError::CommandIOError(err)
     }
-
 }
+
+impl From<reqwest::Error> for TerminalError {
+    fn from(err: reqwest::Error) -> TerminalError {
+        TerminalError::ReqwestError(err)
+    }
+}
+
 impl fmt::Display for VersionCheckError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {

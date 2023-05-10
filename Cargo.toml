@@ -1,6 +1,6 @@
 [package]
 name = "haxrs"
-version = "0.1.2"
+version = "0.1.3"
 edition = "2021"
 authors = ["skyline <efedasguney@protonmail.com>"]
 license-file = "LICENSE"

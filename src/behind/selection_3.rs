@@ -1,12 +1,13 @@
 use reqwest::blocking::Client;
 use std::io::{stdin, stdout, Write};
 use colored::Colorize;
+use crate::behind::errors::TerminalError;
 
-pub(crate) fn selection_3() {
+pub(crate) fn selection_3() -> Result<(), TerminalError> {
     print!("\nURL (http or https): ");
-    stdout().flush().unwrap();
+    stdout().flush()?;
     let mut url_input = String::new();
-    stdin().read_line(&mut url_input).unwrap();
+    stdin().read_line(&mut url_input)?;
 
     // Validate the URL
     log::info!("Validating URL: {}", url_input.trim());
@@ -14,9 +15,9 @@ pub(crate) fn selection_3() {
     match parsed_url {
         Ok(_) => {
             print!("Mask-Domain: ");
-            stdout().flush().unwrap();
+            stdout().flush()?;
             let mut mask_domain = String::new();
-            stdin().read_line(&mut mask_domain).unwrap();
+            stdin().read_line(&mut mask_domain)?;
 
             // Validate the mask domain
             let mask_url = format!("http://{}", mask_domain.trim());  // Temporarily append a scheme for validation
@@ -31,24 +32,45 @@ pub(crate) fn selection_3() {
                             url_input.trim()
                         );
                         log::info!("Sending request to {}", isgd_url);
-                        let short_url = client.get(isgd_url).send().unwrap().text().unwrap();
+                        let short_url = {
+                            match client.get(&isgd_url).send() {
+                                Ok(response) => {
+                                    if let Ok(short_url) = response.text() {
+                                        short_url
+                                    } else {
+                                        log::error!("Failed to get response from is.gd");
+                                        println!("{}", "Failed to get response from is.gd".red());
+                                        return Ok(());
+                                    }
+                                },
+                                Err(e) => {
+                                    log::error!("Failed to send request to is.gd: {}", e.to_string());
+                                    println!("{0}{1}", "Failed to send request to is.gd: ".red(), e.to_string().bright_red());
+                                    return Ok(());
+                                }
+                            }
+                        };
                         let final_url = format!("https://{}@{}", mask_domain.trim(), short_url.trim().replace("https://", ""));
 
                         println!("End-URL: {}\n", final_url.blue());
+                        Ok(())
                     } else {
                         log::error!("Invalid Mask Domain: the host part of the mask domain must contain a period: {}", mask_domain.trim());
                         println!("{0}{1}", "Invalid Mask Domain: the host part of the mask domain must contain a period: ".red(), mask_domain.bright_red());
+                        Ok(())
                     }
                 },
                 Err(e) => {
                     log::error!("Invalid Mask Domain: {}", e.to_string());
-                    println!("{0}{1}", "Invalid Mask Domain: ".red(), e.to_string().bright_red())
+                    println!("{0}{1}", "Invalid Mask Domain: ".red(), e.to_string().bright_red());
+                    Ok(())
                 },
             }
         },
         Err(e) => {
             log::error!("Invalid URL: {}", e.to_string());
-            println!("{0}{1}", "Invalid URL: ".red(), e.to_string().bright_red())
+            println!("{0}{1}", "Invalid URL: ".red(), e.to_string().bright_red());
+            Ok(())
         },
     }
 }
