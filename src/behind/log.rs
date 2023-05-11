@@ -1,3 +1,4 @@
+use std::env;
 use chrono::Local;
 use log4rs::append::file::FileAppender;
 use log4rs::Config;
@@ -11,6 +12,22 @@ pub(crate) fn log_init() {
     let now = Local::now();
     let date = now.format("%Y-%m-%d").to_string();
 
+    // check if os is linux and create logs folder in home directory
+    if env::consts::OS == "linux" {
+        if let Err(e) = std::fs::create_dir_all(format!("{}/.haxrs/logs", {match env::var("HOME") {
+            Ok(home) => home,
+            Err(e) => {
+                error_msg(&format!("Failed to get home directory: {}", e));
+                std::process::exit(1);
+            }
+        }})) {
+            error_msg(&format!("Failed to create log directory: {}", e));
+            std::process::exit(1);
+        }
+    } else if let Err(e) = std::fs::create_dir_all("logs") {
+        error_msg(&format!("Failed to create log directory: {}", e));
+        std::process::exit(1);
+    }
     let filename = format!("logs/execution-{}.log", date);
 
     let logfile: FileAppender = {
