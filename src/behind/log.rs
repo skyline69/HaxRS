@@ -51,7 +51,19 @@ pub(crate) fn log_init() {
         }
     };
     // clear the log file on startup
-    if let Err(e) = std::fs::write(format!("logs/execution-{}.log", date), "") {
+    // check if os is linux and create logs folder in home directory
+    if env::consts::OS != "windows"  || env::consts::OS == "linux" {
+        if let Err(e) = std::fs::write(format!("{}/.haxrs/logs/execution-{}.log", {match env::var("HOME") {
+            Ok(home) => home,
+            Err(e) => {
+                error_msg(&format!("Failed to get home directory: {}", e));
+                std::process::exit(1);
+            }
+        }}, date), "") {
+            error_msg(&format!("Failed to clear log file: {}", e));
+            std::process::exit(1);
+        }
+    } else if let Err(e) = std::fs::write(format!("logs/execution-{}.log", date), "") {
         error_msg(&format!("Failed to clear log file: {}", e));
         std::process::exit(1);
     }
