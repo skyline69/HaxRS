@@ -13,7 +13,7 @@ pub(crate) fn log_init() {
     let date = now.format("%Y-%m-%d").to_string();
 
     // check if os is linux and create logs folder in home directory
-    if env::consts::OS == "linux" {
+    if env::consts::OS != "windows"  || env::consts::OS == "linux" {
         if let Err(e) = std::fs::create_dir_all(format!("{}/.haxrs/logs", {match env::var("HOME") {
             Ok(home) => home,
             Err(e) => {
