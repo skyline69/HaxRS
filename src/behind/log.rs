@@ -6,30 +6,42 @@ use log4rs::config::{Appender, Root};
 use log4rs::encode::pattern::PatternEncoder;
 use log::LevelFilter;
 use crate::behind::cli::error_msg;
-
+use dirs::data_dir;
 
 pub(crate) fn log_init() {
     let now = Local::now();
     let date = now.format("%Y-%m-%d").to_string();
 
-
-    // check if os is linux and create logs folder in home directory
-    let filename: String = if env::consts::OS != "windows"  || env::consts::OS == "linux" {
-        if let Err(e) = std::fs::create_dir_all(format!("{}/.haxrs/logs", get_home())) {
-            error_msg(&format!("Failed to create log directory: {}", e));
-            std::process::exit(1);
-        }
-        format!("{}/.haxrs/logs/execution-{}.log", get_home(), date)
+    let log_dir_path: String = if env::consts::OS != "windows" || env::consts::OS == "linux" {
+        format!("{}/.haxrs/logs", get_home())
     } else {
-        if let Err(e) = std::fs::create_dir_all("logs") {
-            error_msg(&format!("Failed to create log directory: {}", e));
-            std::process::exit(1);
+        match data_dir() {
+            Some(mut log_dir) => {
+                log_dir.push("HaxRS/logs");
+                match log_dir.to_str() {
+                    Some(s) => s.to_owned(),
+                    None => {
+                        error_msg("Failed to convert log directory to string");
+                        std::process::exit(1);
+                    }
+                }
+            },
+            None => {
+                error_msg("Failed to get AppData directory");
+                std::process::exit(1);
+            }
         }
-        format!("logs/execution-{}.log", date)
     };
 
+    if let Err(e) = std::fs::create_dir_all(&log_dir_path) {
+        error_msg(&format!("Failed to create log directory: {}", e));
+        std::process::exit(1);
+    }
+
+    let filename = format!("{}/execution-{}.log", log_dir_path, date);
+
     let logfile: FileAppender = {
-        match FileAppender::builder().encoder(Box::new(PatternEncoder::new("{d} {l} - {m}\n"))).build(filename) {
+        match FileAppender::builder().encoder(Box::new(PatternEncoder::new("{d} {l} - {m}\n"))).build(filename.clone()) {
             Ok(file_appender) => file_appender,
             Err(e) => {
                 error_msg(&format!("Failed to create log file: {}", e));
@@ -49,16 +61,11 @@ pub(crate) fn log_init() {
         }
     };
     // clear the log file on startup
-    // check if os is linux and create logs folder in home directory
-    if env::consts::OS != "windows"  || env::consts::OS == "linux" {
-        if let Err(e) = std::fs::write(format!("{}/.haxrs/logs/execution-{}.log", get_home(), date), "") {
-            error_msg(&format!("Failed to clear log file: {}", e));
-            std::process::exit(1);
-        }
-    } else if let Err(e) = std::fs::write(format!("logs/execution-{}.log", date), "") {
+    if let Err(e) = std::fs::write(&filename, "") {
         error_msg(&format!("Failed to clear log file: {}", e));
         std::process::exit(1);
     }
+
     match log4rs::init_config(config) {
         Ok(_) => {}
         Err(e) => {
