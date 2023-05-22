@@ -34,10 +34,11 @@ async-recursion = "1.0.4"
 rayon = "1.7.0"
 
 [target.'cfg(unix)'.dependencies]
-procfs = "0.15.1"
 nix = "0.26.2"
 tar = "0.4.38"
 
+[target.'cfg(linux)'.dependencies]
+procfs = "0.15.1"
 
 [build-dependencies]
 winres = "0.1.12"

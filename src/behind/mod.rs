@@ -1,9 +1,10 @@
 pub mod cli;
-pub mod selection_1;
-pub mod selection_3;
-pub mod errors;
-pub mod update;
 pub mod constants;
+pub mod errors;
+pub mod helpers;
 pub mod log;
+pub mod selection_1;
 pub mod selection_2;
+pub mod selection_3;
+pub mod update;
 pub mod zphisher;

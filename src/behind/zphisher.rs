@@ -1,30 +1,26 @@
+use crate::behind::cli::error_msg;
+use crate::behind::constants::*;
+use crate::behind::helpers::get_data_dir;
+use crate::behind::helpers::get_server_dir;
+
+use colored::Colorize;
+use std::env;
+use std::env::consts::OS;
 use std::fs;
 use std::path::{Path, PathBuf};
-use crate::behind::constants::{BIN_PATH, CLOUDFLARE_DOWNLOAD_URL, linux_data_dir, linux_server_dir, LOCALXPOSE_DOWNLOAD_URL, VERSION, windows_data_dir, windows_server_dir, ZPHISHER_VERSION};
-use std::env;
-use crate::behind::cli::error_msg;
-use std::process::{Command, exit};
-use colored::Colorize;
+use std::process::{exit, Command};
 
+use reqwest::Url;
+use std::fs::File;
+use std::io::Write;
 
 pub(crate) fn setup_directories() {
-    let base_dir = if env::consts::OS == "windows" {
-        match windows_data_dir() {
-            Some(e) => e.join("zphisher"),
-            None => {
-                log::error!("{}", "Failed to get AppData directory".red());
-                error_msg("Failed to get AppData directory");
-                exit(1);
-            }
-        }
-    } else {
-        match linux_data_dir() {
-            Some(e) => e.join("zphisher"),
-            None => {
-                log::error!("{}", "Failed to get home directory".red());
-                error_msg("Failed to get home directory");
-                exit(1);
-            }
+    let base_dir = match get_data_dir() {
+        Some(e) => e.join("zphisher"),
+        None => {
+            log::error!("{}", "Failed to get home directory".red());
+            error_msg("Failed to get home directory");
+            exit(1);
         }
     };
 
@@ -93,12 +89,16 @@ pub(crate) fn banner_small() {
     println!("Zphisher Version: {}", ZPHISHER_VERSION.bold());
 }
 
-
 #[cfg(target_os = "windows")]
 pub(crate) fn kill_pid() {
     log::info!("Killing processes");
-    use sysinfo::{System, SystemExt, ProcessExt};
-    let processes_to_kill = vec!["php.exe", "cloudflared-windows-amd64.exe", "loclx.exe", "cloudflared-windows-386.exe"];
+    use sysinfo::{ProcessExt, System, SystemExt};
+    let processes_to_kill = vec![
+        "php.exe",
+        "cloudflared-windows-amd64.exe",
+        "loclx.exe",
+        "cloudflared-windows-386.exe",
+    ];
     let mut sys = System::new_all();
 
     // We refresh the list of processes.
@@ -107,7 +107,12 @@ pub(crate) fn kill_pid() {
     for (pid, proc) in sys.processes() {
         if processes_to_kill.contains(&proc.name()) {
             // Kill the process by PID
-            if let Err(e) = Command::new("taskkill").arg("/PID").arg(pid.to_string()).arg("/F").output() {
+            if let Err(e) = Command::new("taskkill")
+                .arg("/PID")
+                .arg(pid.to_string())
+                .arg("/F")
+                .output()
+            {
                 log::error!("Failed to kill process {}: {}", pid, e);
                 error_msg(&format!("Failed to kill process {}: {}", pid, e));
             }
@@ -115,8 +120,7 @@ pub(crate) fn kill_pid() {
     }
 }
 
-
-#[cfg(not(target_os = "windows"))]
+#[cfg(target_os = "linux")]
 pub(crate) fn kill_pid() {
     let processes_to_kill = vec!["php", "cloudflared", "loclx"];
     let procs = match procfs::process::all_processes() {
@@ -137,7 +141,9 @@ pub(crate) fn kill_pid() {
                     continue;
                 }
             }
-        }.cmdline() {
+        }
+        .cmdline()
+        {
             if let Some(process_name) = cmd.get(0) {
                 if processes_to_kill.contains(&process_name.as_str()) {
                     if let Err(e) = nix::sys::signal::kill(
@@ -149,7 +155,8 @@ pub(crate) fn kill_pid() {
                                     error_msg(&format!("Failed to get process: {}", e));
                                     continue;
                                 }
-                            }.pid
+                            }
+                            .pid
                         } as i32),
                         nix::sys::signal::Signal::SIGKILL,
                     ) {
@@ -162,29 +169,20 @@ pub(crate) fn kill_pid() {
     }
 }
 
-
 fn download(url: &str) -> Result<PathBuf, Box<dyn std::error::Error>> {
-    use std::fs::File;
-    use std::io::Write;
-    use reqwest::Url;
-
     let file_name = url.split('/').last().unwrap_or("tmp.bin");
     let file_extension = file_name.split('.').last().unwrap_or("");
 
     log::info!("Downloading {} to {}", url, file_name);
 
-    #[cfg(target_os = "windows")]
-    let target_path = match windows_server_dir() {
+    let target_path = match get_data_dir() {
         Some(path) => path.join(file_name),
-        None => Path::new(file_name).to_path_buf()
+        None => Path::new(file_name).to_path_buf(),
     };
-    #[cfg(not(target_os = "windows"))]
-    let target_path = match linux_data_dir() {
-        Some(path) => path.join(file_name),
-        None => Path::new(file_name).to_path_buf()
-    };
+
     log::info!("Target path: {:?}", target_path);
 
+    // If the file exists, don't download it again
     if target_path.exists() {
         return Ok(target_path);
     }
@@ -197,6 +195,7 @@ fn download(url: &str) -> Result<PathBuf, Box<dyn std::error::Error>> {
     log::info!("File extension: {}", file_extension);
     log::info!("File name: {}", file_name);
     log::info!("Target path: {:?}", target_path);
+
     // Handle different file types
     // TODO: REMEMBER HERE *
     match file_extension {
@@ -214,7 +213,7 @@ fn download(url: &str) -> Result<PathBuf, Box<dyn std::error::Error>> {
             }
             fs::remove_file(file_name)?;
         }
-        #[cfg(not(target_os = "windows"))]
+
         "tgz" => {
             let tar_gz = File::open(file_name)?;
             let tar = flate2::read::GzDecoder::new(tar_gz);
@@ -231,118 +230,12 @@ fn download(url: &str) -> Result<PathBuf, Box<dyn std::error::Error>> {
     Ok(target_path)
 }
 
-
-#[cfg(not(target_os = "windows"))]
-async fn download(url: &str, output: &str, output_filename: Option<&str>) -> Result<(), Box<dyn std::error::Error>> {
-    log::info!("Downloading {} to {}", url, output);
-    use std::fs::File;
-    use std::io::Write;
-    use std::os::unix::fs::PermissionsExt;
-    use reqwest::Url;
-
-    let file_name_0 = url.split('/').last().unwrap_or("tmp.bin");
-    let file_extension = file_name_0.split('.').last().unwrap_or("");
-
-    let target_path = match linux_data_dir() {
-        Some(path) => path.join(output),
-        None => Path::new(output).to_path_buf()
-    };
-    // Delete existing files
-    if Path::new(file_name_0).exists() {
-        fs::remove_file(file_name_0)?;
-    }
-    if target_path.exists() {
-        fs::remove_file(&target_path)?;
-    }
-
-    // Download the file
-    let response = reqwest::get(Url::parse(url)?).await?;
-    let mut file = File::create(&target_path)?;
-    file.write_all(&response.bytes().await?.as_ref())?;
-
-    let exe_path = match std::env::current_exe() {
-        Ok(path) => match path.parent() {
-            Some(p) => p.to_path_buf(),
-            None => {
-                log::error!("Failed to get current exe path");
-                error_msg("Failed to get current exe path");
-                return Err("Failed to get current exe path".into());
-            }
-        },
-        Err(e) => {
-            log::error!("Failed to get current exe path: {}", e);
-            error_msg(&format!("Failed to get current exe path: {}", e));
-            return Err(e.into());
-        }
-    };
-
-    // Handle different file types
-    match file_extension {
-        "zip" => {
-            let mut archive = zip::ZipArchive::new(File::open(&target_path)?)?;
-            for i in 0..archive.len() {
-                let mut file = archive.by_index(i)?;
-                let outpath = exe_path.join(file.name());
-                if let Some(p) = outpath.parent() {
-                    if !p.exists() {
-                        fs::create_dir_all(&p)?;
-                    }
-                }
-                if (&*file.name()).ends_with('/') {
-                    continue;
-                } else {
-                    let mut outfile = File::create(&outpath)?;
-                    std::io::copy(&mut file, &mut outfile)?;
-                }
-            }
-        }
-
-        "tgz" => {
-            let tar_gz = File::open(file_name_0)?;
-            let tar = flate2::read::GzDecoder::new(tar_gz);
-            let mut archive = tar::Archive::new(tar);
-            archive.unpack(&exe_path)?; // Extract to exe_path
-        }
-        _ => {}
-    }
-    // TODO: REMEMBER HERE *
-    match output_filename {
-        Some(filename) => {
-            let target_file_path = exe_path.join(filename);
-            let mut perms = fs::metadata(&target_file_path)?.permissions();
-            perms.set_mode(0o755); // rwxr-xr-x
-            fs::set_permissions(&target_file_path, perms)?;
-            fs::remove_file(&target_path)?;
-        }
-        None => {
-            let target_file_path = exe_path.join(linux_server_dir().unwrap_or(BIN_PATH.into())).join(file_name_0);
-            let mut perms = match fs::metadata(&target_file_path) {
-                Ok(m) => m.permissions(),
-                Err(e) => {
-                    log::error!("Failed to get metadata: {}", e);
-                    return Err("Failed to get metadata".into());
-                }
-            };
-            perms.set_mode(0o755); // rwxr-xr-x
-            match fs::set_permissions(&target_file_path, perms) {
-                Ok(_) => {}
-                Err(_) => {
-                    log::error!("Failed to set permissions");
-                    return Err("Failed to set permissions".into());
-                }
-            }
-        }
-    }
-
-    Ok(())
-}
-
-pub(crate) fn install_dependencies() {
+pub fn install_dependencies() {
     use rayon::prelude::*;
 
-    let download_links: Vec<&str> = vec![CLOUDFLARE_DOWNLOAD_URL, LOCALXPOSE_DOWNLOAD_URL];
+    let download_links = get_download_urls();
 
-    download_links.par_iter().for_each(|baka| {
+    download_links.par_iter().for_each(|download_link| {
         let exe_path = match env::current_exe() {
             Ok(e) => e,
             Err(e) => {
@@ -352,19 +245,24 @@ pub(crate) fn install_dependencies() {
             }
         };
 
-        #[cfg(target_os = "windows")] let bin_path = windows_server_dir().unwrap_or({
-            match exe_path.parent() {
-                Some(p) => p.to_path_buf(),
-                None => {
-                    log::error!("Failed to get current executable path");
-                    error_msg("Failed to get current executable path");
-                    return;
+        #[cfg(target_os = "windows")]
+        let bin_path = windows_server_dir().unwrap_or(
+            {
+                match exe_path.parent() {
+                    Some(p) => p.to_path_buf(),
+                    None => {
+                        log::error!("Failed to get current executable path");
+                        error_msg("Failed to get current executable path");
+                        return;
+                    }
                 }
             }
-        }.join(BIN_PATH));
+            .join(BIN_PATH),
+        );
 
-        #[cfg(not(target_os = "windows"))] let bin_path = match exe_path.parent() {
-            Some(p) => p.join(linux_server_dir().unwrap_or(BIN_PATH.into())), // Join "bin" directory here.
+        #[cfg(not(target_os = "windows"))]
+        let bin_path = match exe_path.parent() {
+            Some(p) => p.join(get_server_dir().unwrap_or(BIN_PATH.into())), // Join "bin" directory here.
             None => {
                 log::error!("Failed to get current executable path");
                 error_msg("Failed to get current executable path");
@@ -382,26 +280,37 @@ pub(crate) fn install_dependencies() {
             }
         }
 
-        match download(baka) {
+        match download(download_link) {
             Ok(p) => {
                 #[cfg(target_os = "windows")]
-                if let Err(e) = Command::new("powershell").arg("-Command").arg("Start-Process").arg(&p).arg("-ArgumentList").arg("service").arg("install").arg("-Verb").arg("RunAs").output() {
+                if let Err(e) = Command::new("powershell")
+                    .arg("-Command")
+                    .arg("Start-Process")
+                    .arg(&p)
+                    .arg("-ArgumentList")
+                    .arg("service")
+                    .arg("install")
+                    .arg("-Verb")
+                    .arg("RunAs")
+                    .output()
+                {
                     log::error!("Failed to install {}: {e}", p.display());
                     error_msg(&format!("Failed to install {}: {e}", p.display()));
                 }
                 #[cfg(not(target_os = "windows"))]
                 if let Err(e) = Command::new("chmod").arg("+x").arg(&p).output() {
                     log::error!("Failed to give execute permissions to {}: {e}", p.display());
-                    error_msg(&format!("Failed to give execute permissions to {}: {e}", p.display()));
+                    error_msg(&format!(
+                        "Failed to give execute permissions to {}: {e}",
+                        p.display()
+                    ));
                 }
-            },
+            }
             Err(e) => {
                 log::error!("Failed to download: {}", e);
                 error_msg(&format!("Failed to download: {}", e));
             }
         }
-
-
     });
 }
 
@@ -479,7 +388,6 @@ pub(crate) async fn install_cloudflared() {
         error_msg(&format!("Failed to install cloudflared: {}", e));
     }
 }*/
-
 /*
 #[cfg(not(target_os = "windows"))]
 pub(crate) async fn install_cloudflared() {
@@ -688,7 +596,6 @@ pub(crate) async fn install_localxpose() {
         }
     }
 }*/
-
 /*
 #[cfg(not(target_os = "windows"))]
 pub(crate) async fn install_localxpose() {
@@ -775,7 +682,6 @@ pub(crate) async fn install_localxpose() {
         error_msg(&format!("Failed to give execute permissions to localxpose: {}", e));
     }
 }*/
-
 
 // TODO: Add LocalXpose and Localhost.
 // TODO: Add Custom Ports option.
