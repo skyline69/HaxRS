@@ -1,9 +1,9 @@
-use reqwest::blocking::Client;
+use reqwest::Client;
 use std::io::{stdin, stdout, Write};
 use colored::Colorize;
 use crate::behind::errors::TerminalError;
 
-pub(crate) fn selection_3() -> Result<(), TerminalError> {
+pub(crate) async fn selection_3() -> Result<(), TerminalError> {
     print!("\nURL (http or https): ");
     stdout().flush()?;
     let mut url_input = String::new();
@@ -33,9 +33,9 @@ pub(crate) fn selection_3() -> Result<(), TerminalError> {
                         );
                         log::info!("Sending request to {}", isgd_url);
                         let short_url = {
-                            match client.get(&isgd_url).send() {
+                            match client.get(&isgd_url).send().await {
                                 Ok(response) => {
-                                    if let Ok(short_url) = response.text() {
+                                    if let Ok(short_url) = response.text().await {
                                         short_url
                                     } else {
                                         log::error!("Failed to get response from is.gd");

@@ -1,6 +1,6 @@
 use std::time::Instant;
 use std::collections::HashSet;
-use reqwest::blocking::Client;
+use reqwest::Client;
 use serde_json::{Value, to_string_pretty};
 use std::process::Command;
 use std::io;
@@ -16,7 +16,7 @@ fn is_ip_reachable(ip: &str) -> bool {
 }
 
 
-pub(crate) fn selection_1() -> Result<(), TerminalError> {
+pub(crate) async fn selection_1() -> Result<(), TerminalError> {
     let mut ip_inp = String::new();
     print!("\nEnter Target IP: ");
     io::stdout().flush()?;
@@ -65,11 +65,11 @@ pub(crate) fn selection_1() -> Result<(), TerminalError> {
     // Log message
     log::info!("Fetching IP geolocation information for {}", ip_inp);
     let client = Client::new();
-    let response = client.get(&format!("http://ip-api.com/json/{}", ip_inp)).send()?;
+    let response = client.get(&format!("http://ip-api.com/json/{}", ip_inp)).send().await?;
 
     if response.status().is_success() {
         let rg: Value = {
-            match response.json() {
+            match response.json().await {
                 Ok(json) => json,
                 Err(e) => {
                     log::error!("Failed to get response from ip-api.com: {}", e);

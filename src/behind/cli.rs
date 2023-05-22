@@ -1,9 +1,11 @@
 use colored::*;
 use std::io;
 use std::io::Write;
+use async_recursion::async_recursion;
 use crate::behind::constants::INPUT_PROMPT;
 use crate::behind::errors::TerminalError;
 use crate::behind::selection_1::selection_1;
+use crate::behind::selection_2::selection_2;
 use crate::behind::selection_3::selection_3;
 use crate::behind::update::check_update;
 
@@ -23,11 +25,11 @@ pub enum Command {
     Empty,
 }
 
-fn menu_table_select() -> Result<(), TerminalError>{
+async fn menu_table_select() -> Result<(), TerminalError> {
     clear_terminal()?;
     print_login_logo();
-    match menu_table() {
-        Ok(_) => {}
+    match menu_table().await {
+        Ok(_) => {},
         Err(e) => {
             error_msg(&format!("Failed to print menu table: {}", e));
             std::process::exit(1);
@@ -35,6 +37,7 @@ fn menu_table_select() -> Result<(), TerminalError>{
     }
     Ok(())
 }
+
 
 pub fn command_input() -> Result<Command, TerminalError> {
     print!("{}", INPUT_PROMPT);
@@ -57,8 +60,7 @@ pub fn command_input() -> Result<Command, TerminalError> {
     })
 }
 
-
-pub(crate) fn menu_table() -> Result<(), TerminalError> {
+fn print_menu_table() -> Result<(), TerminalError>{
     println!("\n{}", "Select an Action.".bold().underline());
     println!("╔═══════════╦══════════════════════════════════╦══════════════╗");
     println!("║ {:<9} ║ {:<32} ║ {:<12} ║", "Selection".bold(), "Action".bold(), "Category".bold());
@@ -70,40 +72,37 @@ pub(crate) fn menu_table() -> Result<(), TerminalError> {
     println!("{}", "Commands".bold().underline());
     println!("'{0}' - Exit\n'{1}' - Clear Terminal\n'{2}' - Show Menu Table\n'{3}' - Check for Updates\n",
              "exit".bright_blue(), "clear".bright_blue(), "menu".bright_blue(), "update".bright_blue());
+    Ok(())
+}
 
-
+#[async_recursion]
+pub(crate) async fn menu_table() -> Result<(), TerminalError> {
+    print_menu_table()?;
     loop {
-        match command_input()? {
-            Command::Selection1 => selection_1(),
-            Command::Selection2 => {
-                println!("{}", "This feature isn't available yet.".red());
-                Ok(())
-            }
-            Command::Selection3 => {
-                selection_3()?;
-                Ok(())
-            },
-            Command::Exit => std::process::exit(0),
-            Command::Clear => {
-                menu_table_select()?;
-                Ok(())
-            }
-            Command::Menu => menu_table(),
-            Command::Update => {
-                if let Err(e) = check_update() {
-                    error_msg(&e.to_string());
+        ({
+            match command_input()? {
+                Command::Selection1 => selection_1().await,
+                Command::Selection2 => selection_2(),
+                Command::Selection3 => selection_3().await,
+                Command::Exit => std::process::exit(0),
+                Command::Clear => menu_table_select().await,
+                Command::Menu => print_menu_table(),
+                Command::Update => {
+                    if let Err(e) = check_update().await {
+                        error_msg(&e.to_string());
+                    }
+                    Ok(())
                 }
-                Ok(())
+                Command::Empty => {
+                    error_msg("Please enter command or selection");
+                    Ok(())
+                }
+                Command::Unknown => {
+                    error_msg("Invalid Selection");
+                    Ok(())
+                }
             }
-            Command::Empty => {
-                error_msg("Please enter command or selection");
-                Ok(())
-            }
-            Command::Unknown => {
-                error_msg("Invalid Selection");
-                Ok(())
-            }
-        }?;
+        })?;
     }
 
 }

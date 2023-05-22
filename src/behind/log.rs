@@ -6,18 +6,16 @@ use log4rs::config::{Appender, Root};
 use log4rs::encode::pattern::PatternEncoder;
 use log::LevelFilter;
 use crate::behind::cli::error_msg;
-use dirs::data_dir;
+use crate::behind::constants::{linux_data_dir, windows_data_dir};
 
 pub(crate) fn log_init() {
     let now = Local::now();
     let date = now.format("%Y-%m-%d").to_string();
 
-    let log_dir_path: String = if env::consts::OS != "windows" || env::consts::OS == "linux" {
-        format!("{}/.haxrs/logs", get_home())
-    } else {
-        match data_dir() {
+    let log_dir_path: String = if env::consts::OS == "windows" {
+        match windows_data_dir() {
             Some(mut log_dir) => {
-                log_dir.push("HaxRS/logs");
+                log_dir.push("logs");
                 match log_dir.to_str() {
                     Some(s) => s.to_owned(),
                     None => {
@@ -31,6 +29,24 @@ pub(crate) fn log_init() {
                 std::process::exit(1);
             }
         }
+    } else {
+        match linux_data_dir() {
+            Some(mut log_dir) => {
+                log_dir.push("logs");
+                match log_dir.to_str() {
+                    Some(s) => s.to_owned(),
+                    None => {
+                        error_msg("Failed to convert log directory to string");
+                        std::process::exit(1);
+                    }
+                }
+            },
+            None => {
+                error_msg("Failed to get home directory");
+                std::process::exit(1);
+            }
+        }
+
     };
 
     if let Err(e) = std::fs::create_dir_all(&log_dir_path) {
@@ -75,12 +91,4 @@ pub(crate) fn log_init() {
     }
 }
 
-fn get_home() -> String {
-    match env::var("HOME") {
-        Ok(home) => home,
-        Err(e) => {
-            error_msg(&format!("Failed to get home directory: {}", e));
-            std::process::exit(1);
-        }
-    }
-}
+

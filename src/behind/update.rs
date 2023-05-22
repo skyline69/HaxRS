@@ -1,12 +1,12 @@
 use colored::Colorize;
-use reqwest::blocking::Client;
+use reqwest::Client;
 use serde_json::Value;
 use crate::behind::constants::{GITHUB_API_LATEST_RELEASE, USER_AGENT, VERSION};
 use crate::behind::errors::VersionCheckError;
 use semver::Version;
 
-pub(crate) fn check_update() -> Result<(), VersionCheckError> {
-    let result = update_to_latest_version()?;
+pub(crate) async fn check_update() -> Result<(), VersionCheckError> {
+    let result = update_to_latest_version().await?;
     if let Some(latest_version) = result {
         log::info!("Latest version: {}", latest_version[0]);
         let version: &String = &latest_version[0];
@@ -21,14 +21,14 @@ pub(crate) fn check_update() -> Result<(), VersionCheckError> {
 }
 
 
-pub(crate) fn update_to_latest_version() -> Result<Option<Vec<String>>, VersionCheckError> {
+pub(crate) async fn update_to_latest_version() -> Result<Option<Vec<String>>, VersionCheckError> {
     log::info!("Checking latest version...");
     println!("{0}", "Checking latest version...".dimmed());
     let client = Client::builder()
         .user_agent(USER_AGENT)
         .build()?;
-    let response = client.get(GITHUB_API_LATEST_RELEASE).send()?;
-    let json: Value = serde_json::from_str(&response.text()?)?;
+    let response = client.get(GITHUB_API_LATEST_RELEASE).send().await?;
+    let json: Value = serde_json::from_str(&response.text().await?)?;
     // get version of latest release
     let latest_version_str = json[0]["name"]
         .as_str()
