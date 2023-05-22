@@ -1,18 +1,17 @@
 use crate::behind::cli::error_msg;
 use crate::behind::constants::*;
-use crate::behind::helpers::get_data_dir;
-use crate::behind::helpers::get_server_dir;
+use crate::behind::helpers::{get_data_dir, get_download_urls, get_server_dir};
 
 use colored::Colorize;
 use std::env;
-use std::env::consts::OS;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::{exit, Command};
 
 use reqwest::Url;
-use std::fs::File;
-use std::io::Write;
+use std::fs::{File, OpenOptions};
+use zip::read::ZipFile;
+use zip::ZipArchive;
 
 pub(crate) fn setup_directories() {
     let base_dir = match get_data_dir() {
@@ -107,12 +106,7 @@ pub(crate) fn kill_pid() {
     for (pid, proc) in sys.processes() {
         if processes_to_kill.contains(&proc.name()) {
             // Kill the process by PID
-            if let Err(e) = Command::new("taskkill")
-                .arg("/PID")
-                .arg(pid.to_string())
-                .arg("/F")
-                .output()
-            {
+            if let Err(e) = Command::new("taskkill").arg("/PID").arg(pid.to_string()).arg("/F").output() {
                 log::error!("Failed to kill process {}: {}", pid, e);
                 error_msg(&format!("Failed to kill process {}: {}", pid, e));
             }
@@ -141,9 +135,7 @@ pub(crate) fn kill_pid() {
                     continue;
                 }
             }
-        }
-        .cmdline()
-        {
+        }.cmdline() {
             if let Some(process_name) = cmd.get(0) {
                 if processes_to_kill.contains(&process_name.as_str()) {
                     if let Err(e) = nix::sys::signal::kill(
@@ -155,8 +147,7 @@ pub(crate) fn kill_pid() {
                                     error_msg(&format!("Failed to get process: {}", e));
                                     continue;
                                 }
-                            }
-                            .pid
+                            }.pid
                         } as i32),
                         nix::sys::signal::Signal::SIGKILL,
                     ) {
@@ -170,27 +161,25 @@ pub(crate) fn kill_pid() {
 }
 
 fn download(url: &str) -> Result<PathBuf, Box<dyn std::error::Error>> {
-    let file_name = url.split('/').last().unwrap_or("tmp.bin");
-    let file_extension = file_name.split('.').last().unwrap_or("");
+    let file_name: &str = url.split('/').last().unwrap_or("tmp.bin");
+    let file_extension: &str = file_name.split('.').last().unwrap_or("");
 
     log::info!("Downloading {} to {}", url, file_name);
 
-    let target_path = match get_data_dir() {
+    let target_path = match get_server_dir() {
         Some(path) => path.join(file_name),
         None => Path::new(file_name).to_path_buf(),
     };
 
-    log::info!("Target path: {:?}", target_path);
-
-    // If the file exists, don't download it again
-    if target_path.exists() {
-        return Ok(target_path);
-    }
+    log::info!("Target path (Raw installation): {:?}", target_path);
 
     // Download the file
-    let response = reqwest::blocking::get(Url::parse(url)?)?;
+    let client = reqwest::blocking::Client::new();
+    let mut response = client.get(Url::parse(url)?).header("User-Agent", USER_AGENT).send()?;
     let mut file = File::create(&target_path)?;
-    file.write_all(response.text()?.as_ref())?;
+    //file.write_all(response.bytes()?.as_ref())?;
+
+    response.copy_to(&mut file)?;
 
     log::info!("File extension: {}", file_extension);
     log::info!("File name: {}", file_name);
@@ -198,22 +187,38 @@ fn download(url: &str) -> Result<PathBuf, Box<dyn std::error::Error>> {
 
     // Handle different file types
     // TODO: REMEMBER HERE *
+    let mut outpath = PathBuf::new();
+
     match file_extension {
-        "exe" => {}
+        "exe" => {
+            outpath = target_path;
+        }
         "zip" => {
-            let mut archive = zip::ZipArchive::new(File::open(file_name)?)?;
+            let mut archive: ZipArchive<File> = ZipArchive::new(File::open(&target_path)?)?;
             for i in 0..archive.len() {
-                let mut file = archive.by_index(i)?;
-                let outpath = match file.enclosed_name() {
-                    Some(path) => path.to_owned(),
+                let mut file: ZipFile = archive.by_index(i)?;
+
+                outpath = match get_server_dir() {
+                    Some(path) => path.join({
+                        match file.enclosed_name() {
+                            Some(path) => path.to_owned(),
+                            None => continue,
+                        }
+                    }),
                     None => continue,
                 };
-                let mut outfile = File::create(&outpath)?;
+                // if file exists, delete
+                if outpath.exists() {
+                    fs::remove_file(&outpath)?;
+                }
+
+                let mut outfile = OpenOptions::new().create_new(true).write(true).append(true).open(&outpath)?;
+
                 std::io::copy(&mut file, &mut outfile)?;
             }
-            fs::remove_file(file_name)?;
+            fs::remove_file(target_path)?;
         }
-
+        #[cfg(target_os = "linux")]
         "tgz" => {
             let tar_gz = File::open(file_name)?;
             let tar = flate2::read::GzDecoder::new(tar_gz);
@@ -227,13 +232,13 @@ fn download(url: &str) -> Result<PathBuf, Box<dyn std::error::Error>> {
         }
     }
 
-    Ok(target_path)
+    Ok(outpath)
 }
 
 pub fn install_dependencies() {
     use rayon::prelude::*;
 
-    let download_links = get_download_urls();
+    let download_links: Vec<String> = get_download_urls();
 
     download_links.par_iter().for_each(|download_link| {
         let exe_path = match env::current_exe() {
@@ -245,8 +250,7 @@ pub fn install_dependencies() {
             }
         };
 
-        #[cfg(target_os = "windows")]
-        let bin_path = windows_server_dir().unwrap_or(
+        let bin_path = get_server_dir().unwrap_or(
             {
                 match exe_path.parent() {
                     Some(p) => p.to_path_buf(),
@@ -256,12 +260,10 @@ pub fn install_dependencies() {
                         return;
                     }
                 }
-            }
-            .join(BIN_PATH),
+            }.join(BIN_PATH),
         );
 
-        #[cfg(not(target_os = "windows"))]
-        let bin_path = match exe_path.parent() {
+        #[cfg(not(target_os = "windows"))] let bin_path = match exe_path.parent() {
             Some(p) => p.join(get_server_dir().unwrap_or(BIN_PATH.into())), // Join "bin" directory here.
             None => {
                 log::error!("Failed to get current executable path");
@@ -282,18 +284,9 @@ pub fn install_dependencies() {
 
         match download(download_link) {
             Ok(p) => {
+                log::info!("Downloaded {}", p.display());
                 #[cfg(target_os = "windows")]
-                if let Err(e) = Command::new("powershell")
-                    .arg("-Command")
-                    .arg("Start-Process")
-                    .arg(&p)
-                    .arg("-ArgumentList")
-                    .arg("service")
-                    .arg("install")
-                    .arg("-Verb")
-                    .arg("RunAs")
-                    .output()
-                {
+                if let Err(e) = Command::new("powershell").arg("-Command").arg("Start-Process").arg(&p).arg("-ArgumentList").arg("service").arg("install").arg("-Verb").arg("RunAs").output() {
                     log::error!("Failed to install {}: {e}", p.display());
                     error_msg(&format!("Failed to install {}: {e}", p.display()));
                 }
@@ -307,8 +300,8 @@ pub fn install_dependencies() {
                 }
             }
             Err(e) => {
-                log::error!("Failed to download: {}", e);
-                error_msg(&format!("Failed to download: {}", e));
+                log::error!("Failed to dfjdsailfds: {}", e);
+                error_msg(&format!("Failed to dsdsfjkasdfljds: {}", e));
             }
         }
     });

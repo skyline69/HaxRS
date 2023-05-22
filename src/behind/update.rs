@@ -6,7 +6,7 @@ use crate::behind::errors::VersionCheckError;
 use semver::Version;
 
 pub(crate) async fn check_update() -> Result<(), VersionCheckError> {
-    let result = update_to_latest_version().await?;
+    let result: Option<Vec<String>> = update_to_latest_version().await?;
     if let Some(latest_version) = result {
         log::info!("Latest version: {}", latest_version[0]);
         let version: &String = &latest_version[0];
