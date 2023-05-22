@@ -1,4 +1,4 @@
-use crate::behind::cli::error_msg;
+use crate::behind::cli::{error_msg, log_msg};
 use crate::behind::constants::*;
 use crate::behind::helpers::{get_data_dir, get_download_urls, get_server_dir};
 
@@ -13,7 +13,7 @@ use std::fs::{File, OpenOptions};
 use zip::read::ZipFile;
 use zip::ZipArchive;
 
-pub(crate) fn setup_directories() {
+pub fn setup_directories() {
     let base_dir = match get_data_dir() {
         Some(e) => e.join("zphisher"),
         None => {
@@ -77,7 +77,7 @@ pub fn banner() {
     println!("{} {}", "Created by:".dimmed(), "Skyline".dimmed().bold());
 }
 
-pub(crate) fn banner_small() {
+pub fn banner_small() {
     const BANNER: &str = r#"
 ░▀▀█░█▀█░█░█░▀█▀░█▀▀░█░█░█▀▀░█▀▄
 ░▄▀░░█▀▀░█▀█░░█░░▀▀█░█▀█░█▀▀░█▀▄
@@ -89,7 +89,7 @@ pub(crate) fn banner_small() {
 }
 
 #[cfg(target_os = "windows")]
-pub(crate) fn kill_pid() {
+pub fn kill_pid() {
     log::info!("Killing processes");
     use sysinfo::{ProcessExt, System, SystemExt};
     let processes_to_kill = vec![
@@ -115,7 +115,7 @@ pub(crate) fn kill_pid() {
 }
 
 #[cfg(target_os = "linux")]
-pub(crate) fn kill_pid() {
+pub fn kill_pid() {
     let processes_to_kill = vec!["php", "cloudflared", "loclx"];
     let procs = match procfs::process::all_processes() {
         Ok(p) => p,
@@ -207,10 +207,6 @@ fn download(url: &str) -> Result<PathBuf, Box<dyn std::error::Error>> {
                     }),
                     None => continue,
                 };
-                // if file exists, delete
-                if outpath.exists() {
-                    fs::remove_file(&outpath)?;
-                }
 
                 let mut outfile = OpenOptions::new().create_new(true).write(true).append(true).open(&outpath)?;
 
@@ -236,6 +232,12 @@ fn download(url: &str) -> Result<PathBuf, Box<dyn std::error::Error>> {
 }
 
 pub fn install_dependencies() {
+    log::info!("Checking dependencies");
+    log_msg("Checking for dependencies...");
+    let req
+
+
+
     use rayon::prelude::*;
 
     let download_links: Vec<String> = get_download_urls();
@@ -272,7 +274,7 @@ pub fn install_dependencies() {
             }
         };
 
-        log::info!("{:?}", bin_path);
+        log::info!("Bin Path: {:?}", bin_path);
 
         if !bin_path.exists() {
             if let Err(e) = fs::create_dir(&bin_path) {
@@ -281,6 +283,8 @@ pub fn install_dependencies() {
                 return;
             }
         }
+
+
 
         match download(download_link) {
             Ok(p) => {
@@ -309,7 +313,7 @@ pub fn install_dependencies() {
 
 /*
 #[cfg(target_os = "windows")]
-pub(crate) async fn install_cloudflared() {
+pub async fn install_cloudflared() {
     log::info!("Checking if Cloudflare exists.");
 
     let exe_path = match env::current_exe() {
@@ -383,7 +387,7 @@ pub(crate) async fn install_cloudflared() {
 }*/
 /*
 #[cfg(not(target_os = "windows"))]
-pub(crate) async fn install_cloudflared() {
+pub async fn install_cloudflared() {
     use std::fs::File;
     use std::io::Write;
 
@@ -515,7 +519,7 @@ pub(crate) async fn install_cloudflared() {
 } */
 /*
 #[cfg(target_os = "windows")]
-pub(crate) async fn install_localxpose() {
+pub async fn install_localxpose() {
     log::info!("Checking localxpose...");
     println!("{}", "LOG: Checking if LocalXpose is already installed...(Downloading if not)".dimmed());
     let exe_path = match env::current_exe() {
@@ -591,7 +595,7 @@ pub(crate) async fn install_localxpose() {
 }*/
 /*
 #[cfg(not(target_os = "windows"))]
-pub(crate) async fn install_localxpose() {
+pub async fn install_localxpose() {
     log::info!("Checking localxpose...");
     println!("{}", "LOG: Checking if LocalXpose is already installed...(Downloading if not)".dimmed());
     let exe_path = match env::current_exe() {

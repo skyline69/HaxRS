@@ -76,7 +76,7 @@ fn print_menu_table() -> Result<(), TerminalError>{
 }
 
 #[async_recursion]
-pub(crate) async fn menu_table() -> Result<(), TerminalError> {
+pub async fn menu_table() -> Result<(), TerminalError> {
     print_menu_table()?;
     loop {
         ({
@@ -108,11 +108,15 @@ pub(crate) async fn menu_table() -> Result<(), TerminalError> {
 }
 
 
-pub(crate) fn success_msg(msg: &str) {
+pub fn success_msg(msg: &str) {
     println!("{0}: {1}", "Success".bright_green(), msg.green());
 }
 
-pub(crate) fn error_msg(msg: &str) {
+pub fn log_msg(msg: &str) {
+    println!("{0} {1}", "LOG:".bright_blue(), msg.dimmed());
+}
+
+pub fn error_msg(msg: &str) {
     println!("{0}: {1}", "Error".bright_red(), msg.red());
 }
 

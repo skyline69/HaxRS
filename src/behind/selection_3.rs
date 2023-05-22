@@ -3,7 +3,7 @@ use std::io::{stdin, stdout, Write};
 use colored::Colorize;
 use crate::behind::errors::TerminalError;
 
-pub(crate) async fn selection_3() -> Result<(), TerminalError> {
+pub async fn selection_3() -> Result<(), TerminalError> {
     print!("\nURL (http or https): ");
     stdout().flush()?;
     let mut url_input = String::new();

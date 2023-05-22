@@ -8,7 +8,7 @@ use log4rs::Config;
 
 use super::helpers::get_data_dir;
 
-pub(crate) fn log_init() {
+pub fn log_init() {
     let now = Local::now();
     let date = now.format("%Y-%m-%d").to_string();
 

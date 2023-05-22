@@ -5,7 +5,7 @@ use crate::behind::constants::{GITHUB_API_LATEST_RELEASE, USER_AGENT, VERSION};
 use crate::behind::errors::VersionCheckError;
 use semver::Version;
 
-pub(crate) async fn check_update() -> Result<(), VersionCheckError> {
+pub async fn check_update() -> Result<(), VersionCheckError> {
     let result: Option<Vec<String>> = update_to_latest_version().await?;
     if let Some(latest_version) = result {
         log::info!("Latest version: {}", latest_version[0]);
@@ -21,7 +21,7 @@ pub(crate) async fn check_update() -> Result<(), VersionCheckError> {
 }
 
 
-pub(crate) async fn update_to_latest_version() -> Result<Option<Vec<String>>, VersionCheckError> {
+pub async fn update_to_latest_version() -> Result<Option<Vec<String>>, VersionCheckError> {
     log::info!("Checking latest version...");
     println!("{0}", "Checking latest version...".dimmed());
     let client = Client::builder()
