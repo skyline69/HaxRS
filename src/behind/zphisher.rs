@@ -221,26 +221,28 @@ fn download(url: &str) -> Result<PathBuf, Box<dyn std::error::Error>> {
             let mut archive = tar::Archive::new(tar);
             archive.unpack(&target_path)?;
         }
+        #[cfg(target_os = "windows")]
         _ => {
             log::error!("Unknown file type: {}", file_extension);
             error_msg(&format!("Unknown file type: {}", file_extension));
             return Err("Unknown file type".into());
         }
-    }
 
+        #[cfg(not(target_os = "windows"))]
+        _ => {}
+    }
+    log::info!("Outpath: {:?}", outpath);
     Ok(outpath)
 }
 
 pub fn install_dependencies() {
     log::info!("Checking dependencies");
     log_msg("Checking for dependencies...");
-    let req
-
-
 
     use rayon::prelude::*;
 
     let download_links: Vec<String> = get_download_urls();
+
 
     download_links.par_iter().for_each(|download_link| {
         let exe_path = match env::current_exe() {
@@ -265,6 +267,7 @@ pub fn install_dependencies() {
             }.join(BIN_PATH),
         );
 
+        /*
         #[cfg(not(target_os = "windows"))] let bin_path = match exe_path.parent() {
             Some(p) => p.join(get_server_dir().unwrap_or(BIN_PATH.into())), // Join "bin" directory here.
             None => {
@@ -272,7 +275,7 @@ pub fn install_dependencies() {
                 error_msg("Failed to get current executable path");
                 return;
             }
-        };
+        };*/
 
         log::info!("Bin Path: {:?}", bin_path);
 
@@ -285,7 +288,6 @@ pub fn install_dependencies() {
         }
 
 
-
         match download(download_link) {
             Ok(p) => {
                 log::info!("Downloaded {}", p.display());
@@ -294,6 +296,9 @@ pub fn install_dependencies() {
                     log::error!("Failed to install {}: {e}", p.display());
                     error_msg(&format!("Failed to install {}: {e}", p.display()));
                 }
+
+
+
                 #[cfg(not(target_os = "windows"))]
                 if let Err(e) = Command::new("chmod").arg("+x").arg(&p).output() {
                     log::error!("Failed to give execute permissions to {}: {e}", p.display());

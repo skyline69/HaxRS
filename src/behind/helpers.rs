@@ -40,7 +40,7 @@ pub fn get_data_dir() -> Option<PathBuf> {
 
 #[cfg(not(target_os = "windows"))]
 pub fn get_home_dir() -> Option<PathBuf> {
-    match env::var("HOME") {
+    match std::env::var("HOME") {
         Ok(home) => Some(PathBuf::from(home)),
         Err(e) => {
             log::error!("Failed to get home directory: {}", e);
