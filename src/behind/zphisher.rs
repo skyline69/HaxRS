@@ -1,6 +1,6 @@
 use crate::behind::cli::{error_msg, log_msg};
 use crate::behind::constants::*;
-use crate::behind::helpers::{get_data_dir, get_download_urls, get_server_dir};
+use crate::behind::helpers::{files_exist, get_data_dir, get_download_urls, get_server_dir};
 
 use colored::Colorize;
 use std::env;
@@ -12,6 +12,8 @@ use reqwest::Url;
 use std::fs::{File, OpenOptions};
 use zip::read::ZipFile;
 use zip::ZipArchive;
+use rayon::prelude::*;
+
 
 pub fn setup_directories() {
     let base_dir = match get_data_dir() {
@@ -25,7 +27,7 @@ pub fn setup_directories() {
 
     create_dir_if_not_exists(&base_dir.join(".server"));
     create_dir_if_not_exists(&base_dir.join("auth"));
-    recreate_dir(&base_dir.join(".server/www"));
+    create_dir_if_not_exists(&base_dir.join(".server/www"));
     remove_file_if_exists(&base_dir.join(".server/.loclx"));
     remove_file_if_exists(&base_dir.join(".server/.cld.log"));
 }
@@ -47,12 +49,14 @@ fn create_dir_if_not_exists(dir: &Path) {
     }
 }
 
+/*
 fn recreate_dir(dir: &Path) {
     if dir.exists() {
         handle_error(fs::remove_dir_all(dir), "Failed to remove directory");
     }
     handle_error(fs::create_dir_all(dir), "Failed to create directory");
 }
+*/
 
 fn remove_file_if_exists(file: &Path) {
     if file.exists() {
@@ -160,7 +164,7 @@ pub fn kill_pid() {
     }
 }
 
-fn download(url: &str) -> Result<PathBuf, Box<dyn std::error::Error>> {
+fn download(url: &String) -> Result<PathBuf, Box<dyn std::error::Error>> {
     let file_name: &str = url.split('/').last().unwrap_or("tmp.bin");
     let file_extension: &str = file_name.split('.').last().unwrap_or("");
 
@@ -239,34 +243,33 @@ pub fn install_dependencies() {
     log::info!("Checking dependencies");
     log_msg("Checking for dependencies...");
 
-    use rayon::prelude::*;
+    let exe_path = match env::current_exe() {
+        Ok(e) => e,
+        Err(e) => {
+            log::error!("Failed to get current executable path: {}", e);
+            error_msg(&format!("Failed to get current executable path: {}", e));
+            return;
+        }
+    };
+
+    let bin_path = get_server_dir().unwrap_or(
+        {
+            match exe_path.parent() {
+                Some(p) => p.to_path_buf(),
+                None => {
+                    log::error!("Failed to get current executable path");
+                    error_msg("Failed to get current executable path");
+                    return;
+                }
+            }
+        }.join(BIN_PATH),
+    );
 
     let download_links: Vec<String> = get_download_urls();
-
-
+    if files_exist(&bin_path) {
+        return;
+    }
     download_links.par_iter().for_each(|download_link| {
-        let exe_path = match env::current_exe() {
-            Ok(e) => e,
-            Err(e) => {
-                log::error!("Failed to get current executable path: {}", e);
-                error_msg(&format!("Failed to get current executable path: {}", e));
-                return;
-            }
-        };
-
-        let bin_path = get_server_dir().unwrap_or(
-            {
-                match exe_path.parent() {
-                    Some(p) => p.to_path_buf(),
-                    None => {
-                        log::error!("Failed to get current executable path");
-                        error_msg("Failed to get current executable path");
-                        return;
-                    }
-                }
-            }.join(BIN_PATH),
-        );
-
         /*
         #[cfg(not(target_os = "windows"))] let bin_path = match exe_path.parent() {
             Some(p) => p.join(get_server_dir().unwrap_or(BIN_PATH.into())), // Join "bin" directory here.
@@ -277,7 +280,7 @@ pub fn install_dependencies() {
             }
         };*/
 
-        log::info!("Bin Path: {:?}", bin_path);
+        log::info!("Bin Path (S281): {:?}", bin_path);
 
         if !bin_path.exists() {
             if let Err(e) = fs::create_dir(&bin_path) {
@@ -297,8 +300,6 @@ pub fn install_dependencies() {
                     error_msg(&format!("Failed to install {}: {e}", p.display()));
                 }
 
-
-
                 #[cfg(not(target_os = "windows"))]
                 if let Err(e) = Command::new("chmod").arg("+x").arg(&p).output() {
                     log::error!("Failed to give execute permissions to {}: {e}", p.display());
@@ -309,8 +310,8 @@ pub fn install_dependencies() {
                 }
             }
             Err(e) => {
-                log::error!("Failed to dfjdsailfds: {}", e);
-                error_msg(&format!("Failed to dsdsfjkasdfljds: {}", e));
+                log::error!("Failed to download(E310): {}", e);
+                error_msg(&format!("Failed to download(E310): {}", e));
             }
         }
     });

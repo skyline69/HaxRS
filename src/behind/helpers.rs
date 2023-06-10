@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::collections::HashMap;
 use std::env::consts::{ARCH, OS};
 
@@ -50,6 +50,27 @@ pub fn get_home_dir() -> Option<PathBuf> {
     }
 }
 
+
+pub fn files_exist(bin_path: &Path) -> bool {
+    #[cfg(target_os = "windows")]
+    let windows: Vec<&str> = vec!["loclx.exe", "cloudflared-windows-amd64.exe",
+                       "cloudflared-windows-386.exe", "php.exe"];
+
+    #[cfg(not(target_os = "windows"))]
+    let linux: Vec<&str> = vec!["loclx", "cloudflared-linux-amd64",
+                                "cloudflared-linux-386"];
+
+    #[cfg(target_os = "windows")]
+    if windows.iter().any(|x| bin_path.join(x).exists()) {
+        return true;
+    }
+    #[cfg(not(target_os = "windows"))]
+    if linux.iter().any(|x| bin_path.join(x).exists()) {
+        return true;
+    }
+    false
+
+}
 
 pub fn get_download_urls() -> Vec<String> {
     let cloudflare_download_url: HashMap<&str, &str> = HashMap::from([

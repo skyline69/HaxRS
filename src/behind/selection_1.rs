@@ -31,7 +31,7 @@ pub async fn selection_1() -> Result<(), TerminalError> {
     port_inp = port_inp.trim().to_string();
     io::stdout().flush()?;
 
-    let port_inp = match port_inp.parse::<u32>() {
+    let port_inp: u32 = match port_inp.parse::<u32>() {
         Ok(num) => {
             if num > 0 && num < 65536u32 {
                 num
@@ -124,7 +124,7 @@ pub async fn selection_1() -> Result<(), TerminalError> {
         let result_t = duration.as_secs_f64();
 
         if result_t >= 60f64 {
-            println!("\nTime: {}\n", format!("{:.2}m", result_t / 60.0).cyan());
+            println!("\nTime: {}\n", format!("{:.2}m", result_t / 60f64).cyan());
         } else {
             println!("\nTime: {}\n", format!("{:.2}s", result_t).cyan());
         };

@@ -20,7 +20,7 @@ git clone https://github.com/skyline69/HaxRS.git
 # Change to the repository directory
 cd HaxRS || exit
 
-# Build the application
+# Build the application:
 cargo build --release
 
 # Copy the binary to /usr/local/bin

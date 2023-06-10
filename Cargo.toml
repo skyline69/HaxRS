@@ -21,7 +21,7 @@ dirs = "5.0.1"
 log = "0.4.17"
 log4rs = "1.2.0"
 ping = "0.4.1"
-reqwest = { version = "0.11.17", features = ["json", "blocking"]}
+reqwest = { version = "0.11.17", features = ["json", "blocking"], default-features = false}
 semver = "1.0.17"
 serde_json = "1.0.96"
 socket2 = "0.5.2"
@@ -48,3 +48,4 @@ debug-assertions = false
 overflow-checks = false
 lto = true
 debug = false
+strip = true
