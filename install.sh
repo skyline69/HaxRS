@@ -14,6 +14,13 @@ if ! command -v nmap &> /dev/null; then
     exit 1
 fi
 
+# Check if PHP is installed
+if ! command -v php &> /dev/null; then
+    echo -e "\e[31mError: PHP is required but not installed.\e[0m"
+    echo -e "Please follow the instructions here ( \e[94mhttps://github.com/skyline69/HaxRS#how-to-install-php-on-linux\e[0m ) to install PHP on your system."
+    exit 1
+fi
+
 # Clone the HaxRS repository
 git clone https://github.com/skyline69/HaxRS.git
 

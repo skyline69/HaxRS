@@ -1,6 +1,7 @@
 use reqwest::Client;
 use std::io::{stdin, stdout, Write};
 use colored::Colorize;
+use crate::behind::cli::error_msg;
 use crate::behind::errors::TerminalError;
 
 pub async fn selection_3() -> Result<(), TerminalError> {
@@ -39,13 +40,13 @@ pub async fn selection_3() -> Result<(), TerminalError> {
                                         short_url
                                     } else {
                                         log::error!("Failed to get response from is.gd");
-                                        println!("{}", "Failed to get response from is.gd".red());
+                                        error_msg("Failed to get response from is.gd");
                                         return Ok(());
                                     }
                                 },
                                 Err(e) => {
                                     log::error!("Failed to send request to is.gd: {}", e.to_string());
-                                    println!("{0}{1}", "Failed to send request to is.gd: ".red(), e.to_string().bright_red());
+                                    error_msg(&format!("Failed to send request to is.gd: {}", e));
                                     return Ok(());
                                 }
                             }
@@ -56,20 +57,20 @@ pub async fn selection_3() -> Result<(), TerminalError> {
                         Ok(())
                     } else {
                         log::error!("Invalid Mask Domain: the host part of the mask domain must contain a period: {}", mask_domain.trim());
-                        println!("{0}{1}", "Invalid Mask Domain: the host part of the mask domain must contain a period: ".red(), mask_domain.bright_red());
+                        error_msg(&format!("Invalid Mask Domain: the host part of the mask domain must contain a period: {}", mask_domain.trim()));
                         Ok(())
                     }
                 },
                 Err(e) => {
                     log::error!("Invalid Mask Domain: {}", e.to_string());
-                    println!("{0}{1}", "Invalid Mask Domain: ".red(), e.to_string().bright_red());
+                    error_msg(&format!("Invalid Mask Domain: {}", e));
                     Ok(())
                 },
             }
         },
         Err(e) => {
             log::error!("Invalid URL: {}", e.to_string());
-            println!("{0}{1}", "Invalid URL: ".red(), e.to_string().bright_red());
+            error_msg(&format!("Invalid URL: {}", e));
             Ok(())
         },
     }

@@ -1,6 +1,7 @@
 use std::path::{Path, PathBuf};
 use std::collections::HashMap;
 use std::env::consts::{ARCH, OS};
+use std::process::exit;
 
 use crate::behind::cli::error_msg;
 
@@ -52,27 +53,25 @@ pub fn get_home_dir() -> Option<PathBuf> {
 
 
 pub fn files_exist(bin_path: &Path) -> bool {
-    #[cfg(target_os = "windows")]
-    let windows: Vec<&str> = vec!["loclx.exe", "cloudflared-windows-amd64.exe",
-                       "cloudflared-windows-386.exe", "php.exe"];
-
-    #[cfg(not(target_os = "windows"))]
-    let linux: Vec<&str> = vec!["loclx", "cloudflared-linux-amd64",
-                                "cloudflared-linux-386"];
+    #[cfg(target_os = "windows")] let windows_amd: Vec<&str> = vec!["loclx.exe", "cloudflared-windows-amd64.exe"];
+    #[cfg(target_os = "windows")] let windows_intel: Vec<&str> = vec!["loclx.exe", "cloudflared-windows-386.exe"];
 
     #[cfg(target_os = "windows")]
-    if windows.iter().any(|x| bin_path.join(x).exists()) {
+    if windows_amd.iter().all(|x| bin_path.join(x).exists()) | windows_intel.iter().all(|x| bin_path.join(x).exists()) {
         return true;
     }
+
+    #[cfg(not(target_os = "windows"))] let linux_amd: Vec<&str> = vec!["loclx", "cloudflared-linux-amd64"];
+    #[cfg(not(target_os = "windows"))] let linux_intel: Vec<&str> = vec!["loclx", "cloudflared-linux-386"];
+
     #[cfg(not(target_os = "windows"))]
-    if linux.iter().any(|x| bin_path.join(x).exists()) {
+    if linux_amd.iter().all(|x| bin_path.join(x).exists()) | linux_intel.iter().all(|x| bin_path.join(x).exists()) {
         return true;
     }
     false
-
 }
 
-pub fn get_download_urls() -> Vec<String> {
+pub fn get_download_urls<'a>() -> Vec<&'a str> {
     let cloudflare_download_url: HashMap<&str, &str> = HashMap::from([
         ("windows", "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-windows-amd64.exe"),
         ("linux", {
@@ -80,8 +79,8 @@ pub fn get_download_urls() -> Vec<String> {
                 "x86_64" => "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64",
                 "aarch64" => "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-arm64",
                 _ => {
-                    error_msg("Unsupported architecture");
-                    std::process::exit(1);
+                    error_msg("Unsupported architecture for Cloudflare");
+                    exit(1);
                 }
             }
         })
@@ -93,8 +92,8 @@ pub fn get_download_urls() -> Vec<String> {
                 "x86_64" => "https://api.localxpose.io/api/v2/downloads/loclx-linux-amd64.zip",
                 "aarch64" => "https://api.localxpose.io/api/v2/downloads/loclx-linux-arm64.zip",
                 _ => {
-                    error_msg("Unsupported architecture");
-                    std::process::exit(1);
+                    error_msg("Unsupported architecture for LocalXPose");
+                    exit(1);
                 }
             }
         }),
@@ -104,25 +103,25 @@ pub fn get_download_urls() -> Vec<String> {
         ),
     ]);
     // Get values
-    let links: Vec<String> = Vec::from([
+    let links: Vec<&str> = Vec::from([
         {
             match cloudflare_download_url.get(OS) {
-                Some(url) => url.to_string(),
+                Some(url) => *url,
                 None => {
-                    error_msg("Unsupported OS");
-                    std::process::exit(1);
+                    error_msg("Unsupported OS for Cloudflare");
+                    exit(1);
                 }
             }
         },
         {
             match localxpose_download_url.get(OS) {
-                Some(url) => url.to_string(),
+                Some(url) => *url,
                 None => {
-                    error_msg("Unsupported OS");
-                    std::process::exit(1);
+                    error_msg("Unsupported OS for LocalXPose");
+                    exit(1);
                 }
             }
-        }
+        },
     ]);
 
 

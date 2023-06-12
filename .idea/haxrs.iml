@@ -7,6 +7,7 @@
       <excludeFolder url="file://$MODULE_DIR$/installer_build" />
       <excludeFolder url="file://$MODULE_DIR$/target" />
       <excludeFolder url="file://$MODULE_DIR$/nmap-bin" />
+      <excludeFolder url="file://$MODULE_DIR$/php-bin" />
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
