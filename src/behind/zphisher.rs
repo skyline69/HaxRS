@@ -378,6 +378,8 @@ pub fn site_input() -> Result<u16, TerminalError> {
     }
 }
 
+
+// TODO: site_selection stops the entire program because of async recursion, so fix that.
 pub fn site_selection<'a>() -> Result<(&'a str, Option<&'a str>), TerminalError> {
     let selection = match site_input() {
         Ok(s) => s,
@@ -425,6 +427,7 @@ pub fn site_selection<'a>() -> Result<(&'a str, Option<&'a str>), TerminalError>
         35 => Ok(("roblox", Some("https://get-free-robux"))),
         99 => Ok(("about", None)),
         0 => Ok(("exit", None)),
+        // TODO: Here fix the Error ( This causes the program to stop )
         _ => {
             log::error!("Invalid selection");
             error_msg("Invalid selection, Please try again");
