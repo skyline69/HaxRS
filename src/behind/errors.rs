@@ -9,6 +9,8 @@ pub enum VersionCheckError {
     VersionParseError(semver::Error),
 }
 
+
+
 #[allow(clippy::enum_variant_names)]
 #[derive(Debug)]
 pub enum TerminalError {
@@ -53,6 +55,12 @@ impl From<std::io::Error> for TerminalError {
 impl From<reqwest::Error> for TerminalError {
     fn from(err: reqwest::Error) -> TerminalError {
         TerminalError::ReqwestError(err)
+    }
+}
+
+impl From<&str> for TerminalError {
+    fn from(err: &str) -> TerminalError {
+        TerminalError::CommandIOError(std::io::Error::new(std::io::ErrorKind::Other, err))
     }
 }
 

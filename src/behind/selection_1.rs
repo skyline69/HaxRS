@@ -154,13 +154,16 @@ fn parse_nmap_output(output: &str) -> HashSet<u16> {
 
 fn run_nmap_scan(ip: &str, port_count: u32) -> Result<String, Box<dyn std::error::Error>> {
     log::info!("Checking for nmap binary...");
-    if env::consts::OS == "windows" {
+    #[cfg(target_os = "windows")]
+    {
         let nmap_path = env::current_dir()?.join("nmap-bin").join("nmap.exe");
         let output = Command::new(nmap_path).arg("-Pn").arg("-p").arg(format!("0-{}", port_count)).arg(ip).output()?;
         let output_str = String::from_utf8_lossy(&output.stdout).into_owned();
         log::info!("Nmap scan output: {}", output_str);
         Ok(output_str)
-    } else {
+    }
+    # [cfg(not(target_os = "windows"))]
+    {
         let output = Command::new("nmap").arg("-Pn").arg("-p").arg(format!("0-{}", port_count)).arg(ip).output()?;
         let output_str = String::from_utf8_lossy(&output.stdout).into_owned();
         log::info!("Nmap scan output: {}", output_str);

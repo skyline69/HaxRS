@@ -117,7 +117,7 @@ pub fn log_msg(msg: &str) {
 }
 
 pub fn error_msg(msg: &str) {
-    println!("{0}: {1}", "Error".bright_red(), msg.red());
+    println!("{0} | {1}", "Error".bright_red(), msg.red());
 }
 
 

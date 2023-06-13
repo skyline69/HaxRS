@@ -7,5 +7,5 @@ pub const INPUT_PROMPT: &str = "Selection: ";
 pub const ZPHISHER_VERSION: &str = "2.3.5";
 
 // Default values for Host and Port
-// pub const HOST: &str = "127.0.0.1";
-// pub const PORT: &str = "8080";
+pub const HOST: &str = "127.0.0.1";
+pub const PORT: &str = "8080";

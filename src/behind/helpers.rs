@@ -39,6 +39,21 @@ pub fn get_data_dir() -> Option<PathBuf> {
     None
 }
 
+pub fn get_sites_dir() -> Option<PathBuf> {
+    #[cfg(target_os = "windows")] // C:\Users\user\AppData\Roaming\HaxRS\zphisher\.server\sites
+    if let Some(mut sites_dir) = get_server_dir() {
+        sites_dir.push("sites");
+        return Some(sites_dir);
+    }
+
+    #[cfg(not(target_os = "windows"))] // /home/user/.haxrs/zphisher/.server/.sites
+    if let Some(mut sites_dir) = get_server_dir() {
+        sites_dir.push(".sites");
+        return Some(sites_dir);
+    }
+    None
+}
+
 #[cfg(not(target_os = "windows"))]
 pub fn get_home_dir() -> Option<PathBuf> {
     match std::env::var("HOME") {
