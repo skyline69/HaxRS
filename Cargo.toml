@@ -30,9 +30,8 @@ tokio = { version =  "1.28.0", features = ["full"] }
 url = "2.3.1"
 flate2 = "1.0.26"
 zip = "0.6.5"
-async-recursion = "1.0.4"
-rayon = "1.7.0"
-regex = "1.8.4"
+ctrlc = "3.4.0"
+zphisher = { path = "src/behind/zphisher" }
 
 
 [target.'cfg(unix)'.dependencies]

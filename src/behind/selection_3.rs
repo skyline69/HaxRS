@@ -2,7 +2,7 @@ use reqwest::Client;
 use std::io::{stdin, stdout, Write};
 use colored::Colorize;
 use crate::behind::cli::error_msg;
-use crate::behind::errors::TerminalError;
+use zphisher::errors::TerminalError;
 
 pub async fn selection_3() -> Result<(), TerminalError> {
     print!("\nURL (http or https): ");

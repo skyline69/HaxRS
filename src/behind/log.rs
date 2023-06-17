@@ -5,8 +5,7 @@ use log4rs::append::file::FileAppender;
 use log4rs::config::{Appender, Root};
 use log4rs::encode::pattern::PatternEncoder;
 use log4rs::Config;
-
-use super::helpers::get_data_dir;
+use zphisher::helpers::get_data_dir;
 
 pub fn log_init() {
     let now = Local::now();

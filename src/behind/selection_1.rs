@@ -9,7 +9,7 @@ use std::net::IpAddr;
 use colored::*;
 use crate::behind::cli::{error_msg, success_msg};
 use std::env;
-use crate::behind::errors::TerminalError;
+use zphisher::errors::TerminalError;
 
 fn is_ip_reachable(ip: &str) -> bool {
     ip.parse::<IpAddr>().is_ok()

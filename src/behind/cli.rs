@@ -1,17 +1,12 @@
 use colored::*;
 use std::io;
 use std::io::Write;
-use async_recursion::async_recursion;
 use crate::behind::constants::INPUT_PROMPT;
-use crate::behind::errors::TerminalError;
+use zphisher::errors::TerminalError;
 use crate::behind::selection_1::selection_1;
 use crate::behind::selection_2::selection_2;
 use crate::behind::selection_3::selection_3;
 use crate::behind::update::check_update;
-
-pub fn clear_terminal() -> Result<(), TerminalError> {
-    Ok(clearscreen::clear()?)
-}
 
 pub enum Command {
     Clear,
@@ -25,18 +20,6 @@ pub enum Command {
     Empty,
 }
 
-async fn menu_table_select() -> Result<(), TerminalError> {
-    clear_terminal()?;
-    print_login_logo();
-    match menu_table().await {
-        Ok(_) => {},
-        Err(e) => {
-            error_msg(&format!("Failed to print menu table: {}", e));
-            std::process::exit(1);
-        }
-    }
-    Ok(())
-}
 
 
 pub fn command_input() -> Result<Command, TerminalError> {
@@ -75,53 +58,55 @@ fn print_menu_table() -> Result<(), TerminalError>{
     Ok(())
 }
 
-#[async_recursion]
 pub async fn menu_table() -> Result<(), TerminalError> {
-    print_menu_table()?;
     loop {
-        ({
-            match command_input()? {
-                Command::Selection1 => selection_1().await,
-                Command::Selection2 => selection_2(),
-                Command::Selection3 => selection_3().await,
-                Command::Exit => std::process::exit(0),
-                Command::Clear => menu_table_select().await,
-                Command::Menu => print_menu_table(),
-                Command::Update => {
-                    if let Err(e) = check_update().await {
-                        error_msg(&e.to_string());
-                    }
-                    Ok(())
-                }
-                Command::Empty => {
-                    error_msg("Please enter command or selection");
-                    Ok(())
-                }
-                Command::Unknown => {
-                    error_msg("Invalid Selection");
-                    Ok(())
+        let mut restart = false;
+        print_menu_table()?;
+        match command_input()? {
+            Command::Selection1 => selection_1().await?,
+            Command::Selection2 => selection_2().await?,
+            Command::Selection3 => selection_3().await?,
+            Command::Exit => std::process::exit(0),
+            Command::Clear => {
+                restart = true;
+            }
+            Command::Menu => print_menu_table()?,
+            Command::Update => {
+                if let Err(e) = check_update().await {
+                    error_msg(&e.to_string());
                 }
             }
-        })?;
+            Command::Empty => {
+                error_msg("Please enter command or selection");
+            }
+            Command::Unknown => {
+                error_msg("Invalid Selection");
+            }
+        };
+        if restart {
+            continue;
+        }
     }
-
 }
+
 
 
 pub fn success_msg(msg: &str) {
     println!("{0}: {1}", "Success".bright_green(), msg.green());
 }
 
+/*
 pub fn log_msg(msg: &str) {
     println!("{0} {1}", "LOG:".bright_blue(), msg.dimmed());
 }
+*/
 
 pub fn error_msg(msg: &str) {
     println!("{0} | {1}", "Error".bright_red(), msg.red());
 }
 
 
-pub fn print_login_logo() {
+pub fn print_hax_logo() {
     let logo = r#"
      888
      888 .oo.    .oooo.   oooo    ooo

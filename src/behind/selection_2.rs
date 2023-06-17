@@ -1,11 +1,11 @@
-use crate::behind::errors::TerminalError;
-use crate::behind::zphisher::{kill_pid, main_menu, setup_site};
-use crate::behind::zphisher::{install_dependencies, setup_directories};
+use zphisher::errors::TerminalError;
 
-pub fn selection_2() -> Result<(), TerminalError> {
+use zphisher::zphisher::{install_dependencies, kill_pid, main_menu, setup_directories};
+
+pub async fn selection_2() -> Result<(), TerminalError> {
     setup_directories();
     kill_pid();
     install_dependencies();
-    main_menu()?;
+    main_menu().await?;
     Ok(())
 }

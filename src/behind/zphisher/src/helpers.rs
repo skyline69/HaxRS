@@ -2,8 +2,12 @@ use std::path::{Path, PathBuf};
 use std::collections::HashMap;
 use std::env::consts::{ARCH, OS};
 use std::process::exit;
+use colored::Colorize;
 
-use crate::behind::cli::error_msg;
+pub fn error_msg(msg: &str) {
+    println!("{0} | {1}", "Error".bright_red(), msg.red());
+}
+
 
 pub fn get_server_dir() -> Option<PathBuf> {
     let data_dir = get_data_dir();

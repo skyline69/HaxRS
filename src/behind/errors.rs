@@ -1,5 +1,6 @@
 use std::error::Error;
 use std::fmt;
+use zphisher::errors::TerminalError;
 
 #[derive(Debug)]
 pub enum VersionCheckError {
@@ -9,58 +10,35 @@ pub enum VersionCheckError {
     VersionParseError(semver::Error),
 }
 
+pub struct MyClearScreenError(clearscreen::Error);
 
-
-#[allow(clippy::enum_variant_names)]
-#[derive(Debug)]
-pub enum TerminalError {
-    ClearError(clearscreen::Error),
-    CommandIOError(std::io::Error),
-    ReqwestError(reqwest::Error),
-}
-
-impl fmt::Display for TerminalError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            TerminalError::ClearError(err) => {
-                log::error!("Could not clear terminal: {}", err);
-                write!(f, "Could not clear terminal: {}", err)
-            },
-            TerminalError::CommandIOError(err) => {
-                log::error!("Could not read/write to terminal: {}", err);
-                write!(f, "Could not read/write to terminal: {}", err)
-            },
-            TerminalError::ReqwestError(err) => {
-                log::error!("Request error: {}", err);
-                write!(f, "Request error: {}", err)
-            },
-        }
+impl From<MyClearScreenError> for TerminalError {
+    fn from(err: MyClearScreenError) -> TerminalError {
+        TerminalError::ClearError(err.0)
     }
 }
 
-impl Error for TerminalError {}
+pub struct MyIOError(std::io::Error);
 
-impl From<clearscreen::Error> for TerminalError {
-    fn from(err: clearscreen::Error) -> TerminalError {
-        TerminalError::ClearError(err)
+impl From<MyIOError> for TerminalError {
+    fn from(err: MyIOError) -> TerminalError {
+        TerminalError::CommandIOError(err.0)
     }
 }
 
-impl From<std::io::Error> for TerminalError {
-    fn from(err: std::io::Error) -> TerminalError {
-        TerminalError::CommandIOError(err)
+pub struct MyReqwestError(reqwest::Error);
+
+impl From<MyReqwestError> for TerminalError {
+    fn from(err: MyReqwestError) -> TerminalError {
+        TerminalError::ReqwestError(err.0)
     }
 }
 
-impl From<reqwest::Error> for TerminalError {
-    fn from(err: reqwest::Error) -> TerminalError {
-        TerminalError::ReqwestError(err)
-    }
-}
+pub struct MyStrError(&'static str);
 
-impl From<&str> for TerminalError {
-    fn from(err: &str) -> TerminalError {
-        TerminalError::CommandIOError(std::io::Error::new(std::io::ErrorKind::Other, err))
+impl From<MyStrError> for TerminalError {
+    fn from(err: MyStrError) -> TerminalError {
+        TerminalError::CommandIOError(std::io::Error::new(std::io::ErrorKind::Other, err.0))
     }
 }
 
