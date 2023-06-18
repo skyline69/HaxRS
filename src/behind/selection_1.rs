@@ -16,6 +16,7 @@ fn is_ip_reachable(ip: &str) -> bool {
 }
 
 
+
 pub async fn selection_1() -> Result<(), TerminalError> {
     let mut ip_inp = String::new();
     print!("\nEnter Target IP: ");

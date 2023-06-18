@@ -28,16 +28,10 @@ socket2 = "0.5.2"
 sysinfo = "0.29.0"
 tokio = { version =  "1.28.0", features = ["full"] }
 url = "2.3.1"
-flate2 = "1.0.26"
 zip = "0.6.5"
 ctrlc = "3.4.0"
 zphisher = { path = "src/behind/zphisher" }
 
-
-[target.'cfg(unix)'.dependencies]
-procfs = "0.15.1"
-nix = "0.26.2"
-tar = "0.4.38"
 
 [build-dependencies]
 winres = "0.1.12"

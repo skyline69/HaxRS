@@ -20,7 +20,6 @@ pub async fn check_update() -> Result<(), VersionCheckError> {
     Ok(())
 }
 
-
 pub async fn update_to_latest_version() -> Result<Option<Vec<String>>, VersionCheckError> {
     log::info!("Checking latest version...");
     println!("{0}", "Checking latest version...".dimmed());
