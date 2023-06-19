@@ -227,7 +227,9 @@ pub async fn start_webserver(static_files: PathBuf, port: Option<u16>, redirect_
         }
     }
     banner_small();
-    notify_msg(&format!("{} {}\n", "Successfully started server at".green(), format!("http://{0}:{1}", HOST, PORT).cyan()));
+    let port: u16 = port.unwrap_or(PORT);
+
+    notify_msg(&format!("{} {}\n", "Successfully started server at".green(), format!("http://{0}:{1}", HOST, port).cyan()));
     HttpServer::new(move || {
         App::new().wrap(middleware::Compress::default()).wrap(
             Cors::default().allow_any_origin().allow_any_method().allow_any_header()
@@ -235,10 +237,7 @@ pub async fn start_webserver(static_files: PathBuf, port: Option<u16>, redirect_
             redirect_url: redirect_url.clone()
         }))
     }).bind(("127.0.0.1", {
-        match port {
-            Some(port) => port,
-            None => PORT
-        }
+        port
     }))?.run().await
 }
 
