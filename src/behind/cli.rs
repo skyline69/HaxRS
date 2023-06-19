@@ -21,7 +21,6 @@ pub enum Command {
 }
 
 
-
 pub fn command_input() -> Result<Command, TerminalError> {
     print!("{}", INPUT_PROMPT);
     io::stdout().flush()?;
@@ -43,7 +42,7 @@ pub fn command_input() -> Result<Command, TerminalError> {
     })
 }
 
-fn print_menu_table() -> Result<(), TerminalError>{
+fn print_menu_table() -> Result<(), TerminalError> {
     println!("\n{}", "Select an Action.".bold().underline());
     println!("╔═══════════╦══════════════════════════════════╦══════════════╗");
     println!("║ {:<9} ║ {:<32} ║ {:<12} ║", "Selection".bold(), "Action".bold(), "Category".bold());
@@ -59,15 +58,18 @@ fn print_menu_table() -> Result<(), TerminalError>{
 }
 
 pub async fn menu_table() -> Result<(), TerminalError> {
+    print_menu_table()?;
     loop {
         let mut restart = false;
-        print_menu_table()?;
         match command_input()? {
             Command::Selection1 => selection_1().await?,
             Command::Selection2 => selection_2().await?,
             Command::Selection3 => selection_3().await?,
             Command::Exit => std::process::exit(0),
             Command::Clear => {
+                clearscreen::clear()?;
+                print_hax_logo();
+                print_menu_table()?;
                 restart = true;
             }
             Command::Menu => print_menu_table()?,
@@ -88,7 +90,6 @@ pub async fn menu_table() -> Result<(), TerminalError> {
         }
     }
 }
-
 
 
 pub fn success_msg(msg: &str) {

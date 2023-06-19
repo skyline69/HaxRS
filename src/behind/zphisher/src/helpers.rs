@@ -1,5 +1,4 @@
 use std::path::{Path, PathBuf};
-use std::collections::HashMap;
 use std::env::consts::{ARCH, OS};
 use std::process::exit;
 use colored::Colorize;
@@ -76,16 +75,16 @@ pub fn get_home_dir() -> Option<PathBuf> {
 
 
 pub fn files_exist(bin_path: &Path) -> bool {
-    #[cfg(target_os = "windows")] let windows_amd: Vec<&str> = vec!["loclx.exe", "cloudflared-windows-amd64.exe"];
-    #[cfg(target_os = "windows")] let windows_intel: Vec<&str> = vec!["loclx.exe", "cloudflared-windows-386.exe"];
+    #[cfg(target_os = "windows")] let windows_amd = ["loclx.exe", "cloudflared-windows-amd64.exe"];
+    #[cfg(target_os = "windows")] let windows_intel= ["loclx.exe", "cloudflared-windows-386.exe"];
 
     #[cfg(target_os = "windows")]
     if windows_amd.iter().all(|x| bin_path.join(x).exists()) | windows_intel.iter().all(|x| bin_path.join(x).exists()) {
         return true;
     }
 
-    #[cfg(not(target_os = "windows"))] let linux_amd: Vec<&str> = vec!["loclx", "cloudflared-linux-amd64"];
-    #[cfg(not(target_os = "windows"))] let linux_intel: Vec<&str> = vec!["loclx", "cloudflared-linux-386"];
+    #[cfg(not(target_os = "windows"))] let linux_amd = ["loclx", "cloudflared-linux-amd64"];
+    #[cfg(not(target_os = "windows"))] let linux_intel = ["loclx", "cloudflared-linux-386"];
 
     #[cfg(not(target_os = "windows"))]
     if linux_amd.iter().all(|x| bin_path.join(x).exists()) | linux_intel.iter().all(|x| bin_path.join(x).exists()) {
@@ -94,59 +93,28 @@ pub fn files_exist(bin_path: &Path) -> bool {
     false
 }
 
-pub fn get_download_urls<'a>() -> Vec<&'a str> {
-    let cloudflare_download_url: HashMap<&str, &str> = HashMap::from([
-        ("windows", "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-windows-amd64.exe"),
-        ("linux", {
-            match ARCH {
-                "x86_64" => "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64",
-                "aarch64" => "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-arm64",
-                _ => {
-                    error_msg("Unsupported architecture for Cloudflare");
-                    exit(1);
-                }
-            }
-        })
-    ]);
-
-    let localxpose_download_url: HashMap<&str, &str> = HashMap::from([
-        ("linux", {
-            match ARCH {
-                "x86_64" => "https://api.localxpose.io/api/v2/downloads/loclx-linux-amd64.zip",
-                "aarch64" => "https://api.localxpose.io/api/v2/downloads/loclx-linux-arm64.zip",
-                _ => {
-                    error_msg("Unsupported architecture for LocalXPose");
-                    exit(1);
-                }
-            }
-        }),
-        (
-            "windows",
-            "https://api.localxpose.io/api/v2/downloads/loclx-windows-amd64.zip",
-        ),
-    ]);
-    // Get values
-    let links: Vec<&str> = Vec::from([
-        {
-            match cloudflare_download_url.get(OS) {
-                Some(url) => *url,
-                None => {
-                    error_msg("Unsupported OS for Cloudflare");
-                    exit(1);
-                }
-            }
-        },
-        {
-            match localxpose_download_url.get(OS) {
-                Some(url) => *url,
-                None => {
-                    error_msg("Unsupported OS for LocalXPose");
-                    exit(1);
-                }
-            }
-        },
-    ]);
+pub fn get_download_urls<'a>() -> [&'a str; 2] {
+    let cloudflare_download_url = match (ARCH, OS) {
+        ("x86_64", "linux") => "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64",
+        ("aarch64", "linux") => "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-arm64",
+        (_, "windows") => "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-windows-amd64.exe",
+        _ => {
+            error_msg("Unsupported architecture or OS for Cloudflare");
+            exit(1);
+        }
+    };
 
 
-    links
+    let localxpose_download_url = match (ARCH, OS) {
+        ("x86_64", "linux") => "https://api.localxpose.io/api/v2/downloads/loclx-linux-amd64.zip",
+        ("aarch64", "linux") => "https://api.localxpose.io/api/v2/downloads/loclx-linux-arm64.zip",
+        (_, "windows") => "https://api.localxpose.io/api/v2/downloads/loclx-windows-amd64.zip",
+        _ => {
+            error_msg("Unsupported architecture or OS for LocalXPose");
+            exit(1);
+        }
+    };
+
+
+    [cloudflare_download_url, localxpose_download_url]
 }
