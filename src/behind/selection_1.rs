@@ -8,7 +8,7 @@ use std::io::Write;
 use std::net::IpAddr;
 use colored::*;
 use crate::behind::cli::{error_msg, success_msg};
-use std::env;
+#[cfg(target_os = "windows")] use std::env;
 use zphisher::errors::TerminalError;
 
 fn is_ip_reachable(ip: &str) -> bool {

