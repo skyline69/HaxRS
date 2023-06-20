@@ -10,6 +10,12 @@ pub enum TerminalError {
     ReqwestError(reqwest::Error),
 }
 
+impl TerminalError {
+    pub fn new(msg: &str) -> TerminalError {
+        TerminalError::CommandIOError(std::io::Error::new(std::io::ErrorKind::Other, msg))
+    }
+}
+
 impl fmt::Display for TerminalError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {

@@ -51,13 +51,6 @@ pub fn get_sites_dir() -> Option<PathBuf> {
         return Some(sites_dir);
     }
 
-    /*
-        #[cfg(not(target_os = "windows"))]
-        if let Some(mut sites_dir) = get_server_dir() {
-            sites_dir.push("sites");
-            return Some(sites_dir);
-        }
-        */
     None
 }
 
@@ -117,4 +110,43 @@ pub fn get_download_urls<'a>() -> [&'a str; 2] {
 
 
     [cloudflare_download_url, localxpose_download_url]
+}
+
+pub fn get_cloudflare_file() -> PathBuf {
+    match (ARCH, OS) {
+        ("x86_64", "linux") => match get_server_dir() {
+            Some(mut server_dir) => {
+                server_dir.push("cloudflared-linux-amd64");
+                server_dir
+            }
+            None => {
+                error_msg("Failed to get server directory");
+                exit(1);
+            }
+        }
+        ("aarch64", "linux") => match get_server_dir() {
+            Some(mut server_dir) => {
+                server_dir.push("cloudflared-linux-arm64");
+                server_dir
+            }
+            None => {
+                error_msg("Failed to get server directory");
+                exit(1);
+            }
+        }
+        (_, "windows") => match get_server_dir() {
+            Some(mut server_dir) => {
+                server_dir.push("cloudflared-windows-amd64.exe");
+                server_dir
+            }
+            None => {
+                error_msg("Failed to get server directory");
+                exit(1);
+            }
+        }
+        _ => {
+            error_msg("Unsupported architecture or OS for Cloudflare");
+            exit(1);
+        }
+    }
 }

@@ -17,7 +17,7 @@ use crate::helpers::get_data_dir;
 
 #[get("/")]
 async fn index(req: HttpRequest, data: Data<PathBuf>) -> impl Responder {
-    let client_ip = req.connection_info().peer_addr().unwrap_or("<unknown>").to_string();
+    let client_ip = req.connection_info().realip_remote_addr().unwrap_or("<unknown>").to_string();
     let user_agent = match req.headers().get(header::USER_AGENT) {
         Some(user_agent) => match user_agent.to_str() {
             Ok(user_agent) => user_agent,
@@ -47,6 +47,7 @@ async fn index(req: HttpRequest, data: Data<PathBuf>) -> impl Responder {
             std::process::exit(1);
         }
     }
+
     let mut file = OpenOptions::new().write(true).append(true).open(&ip_dir).unwrap_or_else(|err| {
         error_msg(&format!("Couldn't open ip.txt file: {}", err));
         std::process::exit(1);
@@ -230,6 +231,8 @@ pub async fn start_webserver(static_files: PathBuf, port: Option<u16>, redirect_
     let port: u16 = port.unwrap_or(PORT);
 
     notify_msg(&format!("{} {}\n", "Successfully started server at".green(), format!("http://{0}:{1}", HOST, port).cyan()));
+    println!("{}", "Press Ctrl+C to exit\n".yellow());
+
     HttpServer::new(move || {
         App::new().wrap(middleware::Compress::default()).wrap(
             Cors::default().allow_any_origin().allow_any_method().allow_any_header()

