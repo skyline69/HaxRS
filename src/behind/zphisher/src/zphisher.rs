@@ -596,16 +596,15 @@ pub async fn setup_site(site: &str, port: Option<u16>, redirect_url: String) -> 
     let site_dir = sites_dir.join(site);
     // dbg!(&sites_dir);
     // dbg!(&site_dir);
-    start_webserver(site_dir, port, redirect_url).await?;
+    start_webserver(site_dir, port, redirect_url.clone()).await?;
     Ok(())
 }
 
 
 fn get_cldflr_url(cus_port: Option<u16>) -> Result<String, TerminalError> {
-    dbg!("start");
-
-    let output = Command::new("powershell").arg("-Command").arg(get_cloudflare_file()).arg("tunnel").arg("--url").arg(format!("http://{}:{}", HOST, cus_port.unwrap_or(PORT))).arg("--logfile").arg(".cld.log").arg("--http2-origin").stdout(Stdio::null()).stderr(Stdio::inherit()).spawn().expect("Failed to start cloudflared");
-
+    log::info!("getting cloudflared url");
+    #[cfg(target_os = "windows")] let output = Command::new("powershell").arg("-Command").arg(get_cloudflare_file()).arg("tunnel").arg("--url").arg(format!("http://{}:{}", HOST, cus_port.unwrap_or(PORT))).arg("--logfile").arg(".cld.log").arg("--http2-origin").stdout(Stdio::null()).stderr(Stdio::inherit()).spawn().expect("Failed to start cloudflared");
+    #[cfg(target_os = "linux")] let output = Command::new(get_cloudflare_file()).arg("tunnel").arg("--url").arg(format!("http://{}:{}", HOST, cus_port.unwrap_or(PORT))).arg("--http2-origin").stdout(Stdio::null()).stderr(Stdio::inherit()).spawn().expect("Failed to start cloudflared");
     let raw_output = output.wait_with_output()?;
     let output = String::from_utf8_lossy(&raw_output.stderr);
     dbg!(&output);
@@ -624,6 +623,7 @@ fn get_cldflr_url(cus_port: Option<u16>) -> Result<String, TerminalError> {
 
 
 pub async fn start_cloudflared(site: &str, redirect_url: String) -> Result<(), TerminalError> {
+    log::info!("Starting cloudflared");
     // remove ".cld.log" file if exists
     let cld_log = match get_server_dir() {
         Some(s) => s,
@@ -656,21 +656,6 @@ pub async fn start_cloudflared(site: &str, redirect_url: String) -> Result<(), T
         }));
     });
     setup_site(site, cus_port, redirect_url).await?;
-
-    #[cfg(not(target_os = "windows"))]
-    {
-        let cloudflare_file = match ARCH {
-            "x86_64" => "cloudflared-linux-amd64",
-            "aarch64" => "cloudflared-linux-arm64",
-            _ => {
-                log::error!("Unsupported architecture: {}", ARCH);
-                error_msg(&format!("Unsupported architecture: {}", ARCH));
-                return Err("Unsupported architecture".into());
-            }
-        };
-        let mut cmd = Command::new(cloudflare_file);
-        cmd.arg("tunnel").arg("run").arg("--url").arg(format!("http://{}:{}", HOST, cus_port.unwrap_or(PORT))).arg("--logfile").arg(".cld.log");
-    }
 
     Ok(())
 }
