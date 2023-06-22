@@ -2777,7 +2777,6 @@ dependencies = [
  "log4rs",
  "nix",
  "procfs",
- "rayon",
  "regex",
  "reqwest",
  "serde",
