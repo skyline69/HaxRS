@@ -16,7 +16,7 @@ path = "src/lib.rs"
 
 [dependencies]
 colored = "2.0.0"
-reqwest = { version = "0.11.17", features = ["json", "blocking"]} # default-features = false <- Sometimes it gives an error, so I commented it.
+reqwest = { version = "0.11.18", features = ["json", "blocking", "cookies"]} # default-features = false <- Sometimes it gives an error, so I commented it.
 zip = "0.6.5"
 regex = "1.8.4"
 rayon = "1.7.0"

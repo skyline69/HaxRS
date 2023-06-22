@@ -4,20 +4,20 @@ use crate::helpers::{files_exist, get_cloudflare_file, get_data_dir, get_downloa
 
 use colored::Colorize;
 use std::{env, thread};
+use std::env::consts::{ARCH, OS};
 
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::{exit, Command, Stdio};
+use crate::constants::USER_AGENT;
 
-use reqwest::Url;
+use reqwest::{header, Url};
 use std::fs::{File, OpenOptions, remove_file};
-use std::io::{Error, ErrorKind, stdin, stdout, Write};
-use futures::try_join;
+use std::io::{stdin, stdout, Write};
+use regex::Regex;
 //#[cfg(target_os = "windows")] use std::thread::sleep;
 // #[cfg(target_os = "windows")] use std::time::Duration; use zip::read::ZipFile; use zip::ZipArchive;
-use rayon::prelude::*;
-use regex::Regex;
-use reqwest::header::USER_AGENT;
+// use rayon::prelude::*; use regex::Regex;
 use zip::read::ZipFile;
 use zip::ZipArchive;
 use crate::errors::TerminalError;
@@ -177,81 +177,152 @@ pub fn kill_pid() {
 }
 
 
-fn download(url: &str) -> Result<PathBuf, Box<dyn std::error::Error>> {
-    let file_name: &str = url.split('/').last().unwrap_or("tmp.bin");
-    let file_extension: &str = file_name.split('.').last().unwrap_or("");
+async fn download(url: &str) -> Result<PathBuf, Box<dyn std::error::Error>> {
+    // check in the url if its a loclx file
+
+    let filename: &str = url.split('/').last().unwrap_or("tmp.bin");
+    dbg!(&filename);
+    let file_name = if filename.contains("loclx") {
+        match OS {
+            "windows" => "loclx.exe",
+            "linux" => "loclx",
+            _ => "loclx",
+        }
+    } else {
+        filename
+    };
+    dbg!(&file_name);
+
 
     log::info!("Downloading {} to {}", url, file_name);
 
     let target_path = match get_server_dir() {
-        Some(path) => path.join(file_name),
+        Some(path) => path.join(
+            {
+                if !path.join(file_name).exists() {
+                    if file_name.contains("loclx") {
+                        match OS {
+                            "windows" => "loclx-windows-amd64.zip",
+                            "linux" => {
+                                match ARCH {
+                                    "x86_64" => "loclx-linux-amd64.zip",
+                                    "aarch64" => "loclx-linux-arm64.zip",
+                                    _ => "loclx-linux-amd64.zip",
+                                }
+                            }
+                            _ => {
+                                log::error!("Unsupported OS at download function");
+                                error_msg("Unsupported OS at download function");
+                                exit(1);
+                            }
+                        }
+                    } else {
+                        file_name
+                    }
+                } else {
+                    file_name
+                }
+            }),
         None => Path::new(file_name).to_path_buf(),
     };
 
-    log::info!("Target path (Raw installation): {:?}", target_path);
+    let file_extension: &str = target_path.extension().unwrap_or_default().to_str().unwrap_or_default();
+    dbg!(&file_extension);
+    log::info!("Target path(download function): {:?}", target_path);
 
-    // Download the file
-    let client = reqwest::blocking::Client::new();
-    let mut response = client.get(Url::parse(url)?).header("User-Agent", USER_AGENT).send()?;
-    let mut file = File::create(&target_path)?;
-    //file.write_all(response.bytes()?.as_ref())?;
-
-    response.copy_to(&mut file)?;
-
-    log::info!("File extension: {}", file_extension);
-    log::info!("File name: {}", file_name);
-    log::info!("Target path: {:?}", target_path);
-
-    // Handle different file types
-    let mut outpath = PathBuf::new();
-
-    match file_extension {
-        "exe" => {
-            outpath = target_path;
+    if !target_path.exists() {
+        log::info!("Target path (Raw installation): {:?}", target_path);
+        let mut headers = header::HeaderMap::new();
+        headers.insert(header::USER_AGENT, header::HeaderValue::from_static(USER_AGENT));
+        headers.insert(header::ACCEPT, header::HeaderValue::from_static("application/json"));
+        headers.insert(header::ACCEPT_ENCODING, header::HeaderValue::from_static("gzip, deflate, br"));
+        headers.insert(header::ACCEPT_LANGUAGE, header::HeaderValue::from_static("en-US,en;q=0.9"));
+        headers.insert(header::CACHE_CONTROL, header::HeaderValue::from_static("no-cache"));
+        headers.insert(header::CONNECTION, header::HeaderValue::from_static("keep-alive"));
+        headers.insert(header::PRAGMA, header::HeaderValue::from_static("no-cache"));
+        headers.insert(header::CONTENT_TYPE, header::HeaderValue::from_static("application/x-www-form-urlencoded"));
+        // Download the file
+        let client = reqwest::ClientBuilder::new()
+            .default_headers(headers)
+            .cookie_store(true);
+        let response = client.build()?.get(Url::parse(url)?).send().await?;
+        log::info!("HTTP Status: {:?}", response.status());
+        if response.status() != 200 {
+            return Err("Failed to download file".into());
         }
-        "zip" => {
-            let mut archive: ZipArchive<File> = ZipArchive::new(File::open(&target_path)?)?;
-            for i in 0..archive.len() {
-                let mut file: ZipFile = archive.by_index(i)?;
+        let mut file = File::create(&target_path)?;
+        file.write_all(response.bytes().await?.as_ref())?;
 
-                outpath = match get_server_dir() {
-                    Some(path) => path.join({
-                        match file.enclosed_name() {
-                            Some(path) => path.to_owned(),
-                            None => continue,
-                        }
-                    }),
-                    None => continue,
-                };
+        // response.copy_to(&mut file)?;
 
-                let mut outfile = OpenOptions::new().create_new(true).write(true).append(true).open(&outpath)?;
+        log::info!("File extension: {}", file_extension);
+        log::info!("File name: {}", file_name);
+        log::info!("Target path: {:?}", target_path);
 
-                std::io::copy(&mut file, &mut outfile)?;
+        // Handle different file types
+        let mut out_path = PathBuf::new();
+
+        match file_extension {
+            "exe" => {
+                out_path = target_path;
             }
-            remove_file(target_path)?;
-        }
-        #[cfg(target_os = "linux")]
-        "tgz" => {
-            let tar_gz = File::open(file_name)?;
-            let tar = flate2::read::GzDecoder::new(tar_gz);
-            let mut archive = tar::Archive::new(tar);
-            archive.unpack(&target_path)?;
-        }
-        #[cfg(target_os = "windows")]
-        _ => {
-            log::error!("Unknown file type: {}", file_extension);
-            error_msg(&format!("Unknown file type: {}", file_extension));
-            return Err("Unknown file type".into());
-        }
+            "zip" => {
+                let file = File::open(&target_path)?;
+                let mut archive: ZipArchive<File> = match ZipArchive::new(file) {
+                    Ok(v) => v,
+                    Err(e) => {
+                        log::error!("Failed to open zip archive: {}", e);
+                        error_msg(&format!("Failed to open zip archive: {}", e));
+                        return Err(e.into());
+                    }
+                };
+                for i in 0..archive.len() {
+                    let mut file: ZipFile = archive.by_index(i)?;
 
-        #[cfg(not(target_os = "windows"))]
-        _ => {}
+                    out_path = match get_server_dir() {
+                        Some(path) => path.join({
+                            match file.enclosed_name() {
+                                Some(path) => path.to_owned(),
+                                None => continue,
+                            }
+                        }),
+                        None => continue,
+                    };
+
+                    let mut outfile = OpenOptions::new().create_new(true).write(true).append(true).open(&out_path)?;
+
+                    std::io::copy(&mut file, &mut outfile)?;
+                }
+                remove_file(target_path)?;
+            }
+            #[cfg(target_os = "linux")]
+            "tgz" => {
+                let tar_gz = File::open(file_name)?;
+                let tar = flate2::read::GzDecoder::new(tar_gz);
+                let mut archive = tar::Archive::new(tar);
+                archive.unpack(&target_path)?;
+            }
+            #[cfg(target_os = "windows")]
+            _ => {
+                log::error!("Unknown file type: {}", file_extension);
+                error_msg(&format!("Unknown file type: {}", file_extension));
+                return Err("Unknown file type".into());
+            }
+
+            #[cfg(not(target_os = "windows"))]
+            _ => {
+                out_path = target_path;
+            }
+        }
+        log::info!("Outpath: {:?}", out_path);
+        return Ok(out_path);
+    } else {
+        log::info!("File {} already exists, skipping download.", target_path.display());
     }
-    log::info!("Outpath: {:?}", outpath);
-    Ok(outpath)
+    Ok(target_path)
 }
 
-pub fn install_dependencies() {
+pub async fn install_dependencies() {
     log::info!("Checking dependencies");
     log_msg("Checking for dependencies... (installing them, if they don't exist)");
 
@@ -281,7 +352,7 @@ pub fn install_dependencies() {
     if files_exist(&bin_path) {
         return;
     }
-    download_links.par_iter().for_each(|download_link| {
+    for download_link in &download_links {
         /*
         #[cfg(not(target_os = "windows"))] let bin_path = match exe_path.parent() {
             Some(p) => p.join(get_server_dir().unwrap_or(BIN_PATH.into())), // Join "bin" directory here.
@@ -302,7 +373,7 @@ pub fn install_dependencies() {
             }
         }
 
-        match download(download_link) {
+        match download(download_link).await {
             Ok(p) => {
                 log::info!("Downloaded {}", p.display());
                 #[cfg(target_os = "windows")]
@@ -325,7 +396,7 @@ pub fn install_dependencies() {
                 error_msg(&format!("Failed to download(E310): {}", e));
             }
         }
-    });
+    };
 }
 
 pub fn custom_port_input() -> Result<Option<u16>, TerminalError> {
@@ -533,19 +604,7 @@ pub async fn setup_site(site: &str, port: Option<u16>, redirect_url: String) -> 
 fn get_cldflr_url(cus_port: Option<u16>) -> Result<String, TerminalError> {
     dbg!("start");
 
-    let output = Command::new("powershell")
-        .arg("-Command")
-        .arg(get_cloudflare_file())
-        .arg("tunnel")
-        .arg("--url")
-        .arg(format!("http://{}:{}", HOST, cus_port.unwrap_or(PORT)))
-        .arg("--logfile")
-        .arg(".cld.log")
-        .arg("--http2-origin")
-        .stdout(Stdio::null())
-        .stderr(Stdio::inherit())
-        .spawn()
-        .expect("Failed to start cloudflared");
+    let output = Command::new("powershell").arg("-Command").arg(get_cloudflare_file()).arg("tunnel").arg("--url").arg(format!("http://{}:{}", HOST, cus_port.unwrap_or(PORT))).arg("--logfile").arg(".cld.log").arg("--http2-origin").stdout(Stdio::null()).stderr(Stdio::inherit()).spawn().expect("Failed to start cloudflared");
 
     let raw_output = output.wait_with_output()?;
     let output = String::from_utf8_lossy(&raw_output.stderr);
@@ -562,8 +621,6 @@ fn get_cldflr_url(cus_port: Option<u16>) -> Result<String, TerminalError> {
 
     Err("URL not found".into())
 }
-
-
 
 
 pub async fn start_cloudflared(site: &str, redirect_url: String) -> Result<(), TerminalError> {
@@ -592,7 +649,7 @@ pub async fn start_cloudflared(site: &str, redirect_url: String) -> Result<(), T
 
 
     thread::spawn(move || {
-        println!("{}",get_cldflr_url(cus_port).unwrap_or_else(|e| {
+        println!("{}", get_cldflr_url(cus_port).unwrap_or_else(|e| {
             log::error!("Failed to get cloudflared URL: {}", e);
             error_msg(&format!("Failed to get cloudflared URL: {}", e));
             exit(1);
@@ -600,39 +657,8 @@ pub async fn start_cloudflared(site: &str, redirect_url: String) -> Result<(), T
     });
     setup_site(site, cus_port, redirect_url).await?;
 
-    /*
-    #[cfg(target_os = "windows")]
-    thread::spawn(move ||
-    {
-        let mut cmd = Command::new("powershell");
-        cmd.arg("/c").arg(get_cloudflare_file()).arg("tunnel")
-            .arg("--url")
-            .arg(format!("http://{}:{}", HOST, cus_port.unwrap_or(PORT)))
-            .arg("--logfile")
-            .arg(".cld.log")
-            .arg("--http2-origin")
-            .stdout(Stdio::null())
-            .stderr(Stdio::null())
-        ;
-        cmd.spawn().unwrap_or_else(|_| {
-            log::error!("Failed to start cloudflared");
-            error_msg("Failed to start cloudflared");
-            exit(1);
-        });
-        dbg!(&cmd);
-        let url = get_cldflr_url().unwrap_or_else(|e| {
-            log::error!("Failed to get cloudflared URL: {}", e);
-            error_msg(&format!("Failed to get cloudflared URL: {}", e));
-            exit(1);
-        });
-        println!("{} {}", "Cloudflared URL:".green(), url.cyan());
-    } );
-    */
-
-    // #[cfg(target_os = "windows")] setup_site(site, cus_port, redirect_url).await?;
     #[cfg(not(target_os = "windows"))]
     {
-        use std::env::consts::ARCH;
         let cloudflare_file = match ARCH {
             "x86_64" => "cloudflared-linux-amd64",
             "aarch64" => "cloudflared-linux-arm64",
