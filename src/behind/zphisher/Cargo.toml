@@ -32,6 +32,7 @@ actix-cors = "0.6.4"
 flate2 = "1.0.26"
 serde = "1.0.164"
 tokio = {version = "1.28.2", features = ["full"]}
+crossterm = "0.26.1"
 
 [target.'cfg(unix)'.dependencies]
 procfs = "0.15.1"
