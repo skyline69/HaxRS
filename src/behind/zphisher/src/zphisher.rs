@@ -601,23 +601,22 @@ pub async fn setup_site(site: &str, port: Option<u16>, redirect_url: String) -> 
 }
 
 
-static NTHREADS: i32 = 3;
 
 fn get_cldflr_url(cus_port: Option<u16>) -> Result<String, TerminalError> {
     log::info!("getting cloudflared url");
-    // TODO: Look here: https://crates.io/crates/winpty-rs and https://crates.io/crates/pty
-    #[cfg(target_os = "windows")] {
-        let output: &mut Command = Command::new("powershell")
-            .arg("-Command")
-            .arg(get_cloudflare_file())
-            .arg("tunnel")
-            .arg("--url")
-            .arg(format!("http://{}:{}", HOST, cus_port.unwrap_or(PORT)))
-            .arg("--logfile").arg(".cld.log")
-            .arg("--http2-origin")
-            .stdout(Stdio::null())
-            .stderr(Stdio::inherit());
-    }
+    #[cfg(target_os = "windows")]
+    let output = Command::new("powershell")
+        .arg("-Command")
+        .arg(get_cloudflare_file())
+        .arg("tunnel")
+        .arg("--url")
+        .arg(format!("http://{}:{}", HOST, cus_port.unwrap_or(PORT)))
+        .arg("--logfile").arg(".cld.log")
+        .arg("--http2-origin")
+        .stdout(Stdio::null())
+        .stderr(Stdio::inherit())
+        .spawn()
+        .expect("Failed to start cloudflared");
 
     #[cfg(target_os = "linux")] let output = Command::new(get_cloudflare_file()).arg("tunnel").arg("--url").arg(format!("http://{}:{}", HOST, cus_port.unwrap_or(PORT))).arg("--http2-origin").stdout(Stdio::null()).stderr(Stdio::inherit()).spawn().expect("Failed to start cloudflared");
     let raw_output = output.wait_with_output()?;
