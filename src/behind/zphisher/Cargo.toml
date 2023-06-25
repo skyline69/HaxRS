@@ -37,3 +37,18 @@ crossterm = "0.26.1"
 procfs = "0.15.1"
 nix = "0.26.2"
 tar = "0.4.38"
+pty = "0.2.2"
+
+[target.'cfg(windows)'.dependencies]
+winpty-rs = "0.3.11"
+
+
+[profile.release]
+opt-level = 3
+codegen-units = 1
+debug-assertions = false
+overflow-checks = true
+panic = "abort"
+lto = true
+debug = false
+strip = true
