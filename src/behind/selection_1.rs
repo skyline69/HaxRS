@@ -163,7 +163,7 @@ fn run_nmap_scan(ip: &str, port_count: u32) -> Result<String, Box<dyn std::error
         log::info!("Nmap scan output: {}", output_str);
         Ok(output_str)
     }
-    # [cfg(not(target_os = "windows"))]
+    # [cfg(target_os = "linux")]
     {
         let output = Command::new("nmap").arg("-Pn").arg("-p").arg(format!("0-{}", port_count)).arg(ip).output()?;
         let output_str = String::from_utf8_lossy(&output.stdout).into_owned();

