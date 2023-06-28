@@ -18,19 +18,19 @@ clearscreen = { version = "2.0.1", features = ["windows-console"] }
 colored = "2.0.0"
 crossterm = "0.26.1"
 dirs = "5.0.1"
-log = "0.4.17"
+log = "0.4.19"
 log4rs = "1.2.0"
 ping = "0.4.1"
 reqwest = { version = "0.11.17", features = ["json", "blocking"]} # default-features = false <- Sometimes it gives an error, so I commented it.
 semver = "1.0.17"
 serde_json = "1.0.96"
 socket2 = "0.5.2"
-sysinfo = "0.29.0"
-tokio = { version =  "1.28.0", features = ["full"] }
+sysinfo = "0.29.2"
+tokio = { version =  "1.29.0", features = ["full"] }
 url = "2.3.1"
-zip = "0.6.5"
+zip = "0.6.6"
 ctrlc = "3.4.0"
-zphisher = { path = "src/behind/zphisher" }
+zphisher = { path = "src/behind/zphisher" , version = "0.1.0" }
 
 
 [build-dependencies]
