@@ -21,9 +21,7 @@ use zip::read::ZipFile;
 use zip::ZipArchive;
 use crate::errors::TerminalError;
 use crate::web_server::start_webserver;
-//#[cfg(target_os = "windows")] use std::thread::sleep;
-// #[cfg(target_os = "windows")] use std::time::Duration; use zip::read::ZipFile; use zip::ZipArchive;
-// use rayon::prelude::*; use regex::Regex; use zip::read::ZipFile; use zip::ZipArchive; use crate::errors::TerminalError; use crate::web_server::start_webserver;
+
 
 ///
 ///# Does the following:

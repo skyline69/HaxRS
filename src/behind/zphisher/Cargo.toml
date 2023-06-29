@@ -33,7 +33,7 @@ serde = "1.0.164"
 tokio = {version = "1.29.0", features = ["full"]}
 crossterm = "0.26.1"
 
-[target.'cfg(unix)'.dependencies]
+[target.'cfg(linux)'.dependencies]
 procfs = "0.15.1"
 nix = "0.26.2"
 tar = "0.4.38"
