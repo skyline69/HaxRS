@@ -1,4 +1,3 @@
-use crate::behind::cli::error_msg;
 use chrono::Local;
 use log::LevelFilter;
 use log4rs::append::file::FileAppender;
@@ -6,6 +5,9 @@ use log4rs::config::{Appender, Root};
 use log4rs::encode::pattern::PatternEncoder;
 use log4rs::Config;
 use zphisher::helpers::get_data_dir;
+use crate::error_msg;
+use colored::*;
+
 
 pub fn log_init() {
     let now = Local::now();
@@ -17,19 +19,19 @@ pub fn log_init() {
             match log_dir.to_str() {
                 Some(s) => s.to_owned(),
                 None => {
-                    error_msg("Failed to convert log directory to string");
+                    error_msg!("Failed to convert log directory to string");
                     std::process::exit(1);
                 }
             }
         }
         None => {
-            error_msg("Failed to get home directory");
+            error_msg!("Failed to get home directory");
             std::process::exit(1);
         }
     };
 
     if let Err(e) = std::fs::create_dir_all(&log_dir_path) {
-        error_msg(&format!("Failed to create log directory: {}", e));
+        error_msg!(&format!("Failed to create log directory: {}", e));
         std::process::exit(1);
     }
 
@@ -42,7 +44,7 @@ pub fn log_init() {
         {
             Ok(file_appender) => file_appender,
             Err(e) => {
-                error_msg(&format!("Failed to create log file: {}", e));
+                error_msg!(&format!("Failed to create log file: {}", e));
                 std::process::exit(1);
             }
         }
@@ -54,21 +56,21 @@ pub fn log_init() {
         {
             Ok(config) => config,
             Err(e) => {
-                error_msg(&format!("Failed to create log config: {}", e));
+                error_msg!(&format!("Failed to create log config: {}", e));
                 std::process::exit(1);
             }
         }
     };
     // clear the log file on startup
     if let Err(e) = std::fs::write(&filename, "") {
-        error_msg(&format!("Failed to clear log file: {}", e));
+        error_msg!(&format!("Failed to clear log file: {}", e));
         std::process::exit(1);
     }
 
     match log4rs::init_config(config) {
         Ok(_) => {}
         Err(e) => {
-            error_msg(&format!("Failed to initialize log config: {}", e));
+            error_msg!(&format!("Failed to initialize log config: {}", e));
             std::process::exit(1);
         }
     }

@@ -2,6 +2,8 @@ use std::path::{Path, PathBuf};
 use std::env::consts::{ARCH, OS};
 use std::process::exit;
 use colored::Colorize;
+use crate::error_msg;
+
 
 pub fn error_msg(msg: &str) {
     println!("{0} | {1}", "Error".bright_red(), msg.red());
@@ -60,7 +62,7 @@ pub fn get_home_dir() -> Option<PathBuf> {
         Ok(home) => Some(PathBuf::from(home)),
         Err(e) => {
             log::error!("Failed to get home directory: {}", e);
-            error_msg(&format!("Failed to get home directory: {}", e));
+            error_msg!(&format!("Failed to get home directory: {}", e));
             None
         }
     }
@@ -120,7 +122,7 @@ pub fn get_cloudflare_file() -> PathBuf {
                 server_dir
             }
             None => {
-                error_msg("Failed to get server directory");
+                error_msg!("Failed to get server directory");
                 exit(1);
             }
         }
@@ -130,7 +132,7 @@ pub fn get_cloudflare_file() -> PathBuf {
                 server_dir
             }
             None => {
-                error_msg("Failed to get server directory");
+                error_msg!("Failed to get server directory");
                 exit(1);
             }
         }
@@ -140,7 +142,7 @@ pub fn get_cloudflare_file() -> PathBuf {
                 server_dir
             }
             None => {
-                error_msg("Failed to get server directory");
+                error_msg!("Failed to get server directory");
                 exit(1);
             }
         }

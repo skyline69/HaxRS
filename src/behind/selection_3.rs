@@ -3,6 +3,7 @@ use std::io::{stdin, stdout, Write};
 use colored::Colorize;
 use crate::behind::cli::error_msg;
 use zphisher::errors::TerminalError;
+use crate::error_msg;
 
 pub async fn selection_3() -> Result<(), TerminalError> {
     print!("\nURL (http or https): ");
@@ -40,13 +41,13 @@ pub async fn selection_3() -> Result<(), TerminalError> {
                                         short_url
                                     } else {
                                         log::error!("Failed to get response from is.gd");
-                                        error_msg("Failed to get response from is.gd");
+                                        error_msg!("Failed to get response from is.gd");
                                         return Ok(());
                                     }
                                 },
                                 Err(e) => {
                                     log::error!("Failed to send request to is.gd: {}", e.to_string());
-                                    error_msg(&format!("Failed to send request to is.gd: {}", e));
+                                    error_msg!(&format!("Failed to send request to is.gd: {}", e));
                                     return Ok(());
                                 }
                             }

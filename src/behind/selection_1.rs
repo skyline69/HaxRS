@@ -10,6 +10,7 @@ use colored::*;
 use crate::behind::cli::{error_msg, success_msg};
 #[cfg(target_os = "windows")] use std::env;
 use zphisher::errors::TerminalError;
+use crate::error_msg;
 
 fn is_ip_reachable(ip: &str) -> bool {
     ip.parse::<IpAddr>().is_ok()
@@ -74,7 +75,7 @@ pub async fn selection_1() -> Result<(), TerminalError> {
                 Ok(json) => json,
                 Err(e) => {
                     log::error!("Failed to get response from ip-api.com: {}", e);
-                    error_msg(&format!("Failed to get response from ip-api.com: {}", e));
+                    error_msg!(&format!("Failed to get response from ip-api.com: {}", e));
                     return Ok(());
                 }
             }
@@ -85,7 +86,7 @@ pub async fn selection_1() -> Result<(), TerminalError> {
             Ok(json) => json,
             Err(e) => {
                 log::error!("Failed to convert IP geolocation information to JSON: {}", e);
-                error_msg(&format!("Failed to convert IP geolocation information to JSON: {}", e));
+                error_msg!(&format!("Failed to convert IP geolocation information to JSON: {}", e));
                 return Ok(());
             }
         }
@@ -94,7 +95,7 @@ pub async fn selection_1() -> Result<(), TerminalError> {
         let nmap_result = match run_nmap_scan(&ip_inp, port_inp) {
             Ok(result) => result,
             Err(e) => {
-                error_msg(&format!("Nmap scan failed: {}", e));
+                error_msg!(&format!("Nmap scan failed: {}", e));
                 return Ok(());
             }
         };
@@ -131,7 +132,7 @@ pub async fn selection_1() -> Result<(), TerminalError> {
         };
     } else {
         log::error!("Failed to get response from ip-api.com: {}", response.status());
-        error_msg(&format!("Failed to get response from IP geolocation API: {}", response.status()));
+        error_msg!(&format!("Failed to get response from IP geolocation API: {}", response.status()));
     }
     Ok(())
 }

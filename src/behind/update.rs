@@ -4,7 +4,7 @@ use serde_json::Value;
 use crate::behind::constants::{GITHUB_API_LATEST_RELEASE, USER_AGENT, VERSION};
 use crate::behind::errors::VersionCheckError;
 use semver::Version;
-use crate::behind::cli::error_msg;
+use crate::error_msg;
 
 pub async fn check_update() -> Result<(), VersionCheckError> {
     let result: Option<[String; 2]> = update_to_latest_version().await?;
@@ -16,7 +16,7 @@ pub async fn check_update() -> Result<(), VersionCheckError> {
             Ok(v) => v,
             Err(_) => {
                 log::error!("Failed to parse version: {}", VERSION);
-                error_msg("Failed to parse version");
+                error_msg!("Failed to parse version");
                 return Err(VersionCheckError::VersionNotFound);
             }
         } {

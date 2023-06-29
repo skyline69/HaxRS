@@ -19,6 +19,7 @@ use crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers, read};
 use regex::Regex;
 use zip::read::ZipFile;
 use zip::ZipArchive;
+use crate::error_msg;
 use crate::errors::TerminalError;
 use crate::web_server::start_webserver;
 
@@ -230,7 +231,7 @@ async fn download(url: &str) -> Result<PathBuf, Box<dyn std::error::Error>> {
                             }
                             _ => {
                                 log::error!("Unsupported OS at download function");
-                                error_msg("Unsupported OS at download function");
+                                error_msg!("Unsupported OS");
                                 exit(1);
                             }
                         }
@@ -321,7 +322,7 @@ async fn download(url: &str) -> Result<PathBuf, Box<dyn std::error::Error>> {
             #[cfg(target_os = "windows")]
             _ => {
                 log::error!("Unknown file type: {}", file_extension);
-                error_msg(&format!("Unknown file type: {}", file_extension));
+                error_msg!(&format!("Unknown file type: {}", file_extension));
                 return Err("Unknown file type".into());
             }
 
@@ -351,7 +352,7 @@ pub async fn install_dependencies() {
         Ok(e) => e,
         Err(e) => {
             log::error!("Failed to get current executable path: {}", e);
-            error_msg(&format!("Failed to get current executable path: {}", e));
+            error_msg!(&format!("Failed to get current executable path: {}", e));
             return;
         }
     };
@@ -362,7 +363,7 @@ pub async fn install_dependencies() {
                 Some(p) => p.to_path_buf(),
                 None => {
                     log::error!("Failed to get current executable path");
-                    error_msg("Failed to get current executable path");
+                    error_msg!("Failed to get current executable path");
                     return;
                 }
             }
@@ -379,7 +380,7 @@ pub async fn install_dependencies() {
         if !bin_path.exists() {
             if let Err(e) = fs::create_dir(&bin_path) {
                 log::error!("Failed to create 'bin' directory: {}", e);
-                error_msg(&format!("Failed to create 'bin' directory: {}", e));
+                error_msg!(&format!("Failed to create 'bin' directory: {}", e));
                 return;
             }
         }
@@ -390,21 +391,21 @@ pub async fn install_dependencies() {
                 #[cfg(target_os = "windows")]
                 if let Err(e) = Command::new("powershell").arg("-Command").arg("Start-Process").arg(&p).arg("-ArgumentList").arg("service").arg("install").arg("-Verb").arg("RunAs").output() {
                     log::error!("Failed to install {}: {e}", p.display());
-                    error_msg(&format!("Failed to install {}: {e}", p.display()));
+                    error_msg!(&format!("Failed to install {}: {e}", p.display()));
                 }
 
                 #[cfg(target_os = "linux")]
                 if let Err(e) = Command::new("chmod").arg("+x").arg(&p).output() {
                     log::error!("Failed to give execute permissions to {}: {e}", p.display());
-                    error_msg(&format!(
+                    error_msg!(&format!(
                         "Failed to give execute permissions to {}: {e}",
                         p.display()
                     ));
                 }
             }
             Err(e) => {
-                log::error!("Failed to download(E310): {}", e);
-                error_msg(&format!("Failed to download(E310): {}", e));
+                log::error!("Failed to download: {}", e);
+                error_msg!(&format!("Failed to download: {}", e));
             }
         }
     };
@@ -491,7 +492,7 @@ pub fn site_selection<'a>() -> (&'a str, Option<&'a str>, Option<&'a str>) {
             Ok(s) => s,
             Err(e) => {
                 log::error!("Failed to get site input: {}", e);
-                error_msg(&format!("Failed to get site input: {}", e));
+                error_msg!(&format!("Failed to get site input: {}", e));
                 return ("", None, None);
             }
         };
@@ -671,7 +672,7 @@ pub async fn setup_site(site: &str, port: Option<u16>, redirect_url: String) -> 
     // change into .server directory
     let sites_dir = get_sites_dir().unwrap_or_else(|| {
         log::error!("Failed to get sites directory");
-        error_msg("Failed to get sites directory");
+        error_msg!("Failed to get sites directory");
         exit(1);
     });
     let site_dir = sites_dir.join(site);
@@ -721,7 +722,7 @@ pub async fn start_cloudflare(site: &str, redirect_url: String) -> Result<(), Te
         Some(s) => s,
         None => {
             log::error!("Failed to get server directory");
-            error_msg("Failed to get server directory");
+            error_msg!("Failed to get server directory");
             return Err("Failed to get server directory".into());
         }
     }.join(".cld.log");
@@ -731,7 +732,7 @@ pub async fn start_cloudflare(site: &str, redirect_url: String) -> Result<(), Te
             Ok(_) => {}
             Err(e) => {
                 log::error!("Failed to remove .cld.log file: {}", e);
-                error_msg(&format!("Failed to remove .cld.log file: {}", e));
+                error_msg!(&format!("Failed to remove .cld.log file: {}", e));
                 return Err(e.into());
             }
         }
@@ -743,7 +744,7 @@ pub async fn start_cloudflare(site: &str, redirect_url: String) -> Result<(), Te
     thread::spawn(move || {
         println!("{}", cloudflare_init(cus_port).unwrap_or_else(|e| {
             log::error!("Failed to get cloudflare URL: {}", e);
-            error_msg(&format!("Failed to get cloudflare URL: {}", e));
+            error_msg!(&format!("Failed to get cloudflare URL: {}", e));
             exit(1);
         }));
     });
@@ -755,7 +756,7 @@ pub async fn start_cloudflare(site: &str, redirect_url: String) -> Result<(), Te
 pub fn about() {
     clear_terminal().unwrap_or_else(|e| {
         log::error!("Failed to clear terminal: {}", e);
-        error_msg(&format!("Failed to clear terminal: {}", e));
+        error_msg!(&format!("Failed to clear terminal: {}", e));
     });
     banner();
     println!("{}", "About".green().underline());

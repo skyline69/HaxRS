@@ -21,7 +21,7 @@ async fn main() -> Result<(), TerminalError> {
     log_init();
     cli::print_hax_logo();
     if let Err(e) = cli::menu_table().await {
-        cli::error_msg(&format!("Failed to print menu table: {}", e));
+        cli::error_msg(&format!("Failed to print menu table: {:?}", e));
         std::process::exit(1);
     }
     Ok(())

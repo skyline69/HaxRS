@@ -106,6 +106,21 @@ pub fn error_msg(msg: &str) {
     println!("{0} | {1}", "Error".bright_red(), msg.red());
 }
 
+///
+/// For detailed error messages
+/// ### Important
+/// `use colored::Colorize;` must be imported
+///
+#[macro_export] macro_rules! error_msg {
+    ($msg: expr) => {
+        println!("{} | {}", "Error".bright_red(), $msg.red());
+        println!("{}[{}{}] {}{}\n",
+        " ".repeat("Error | ".len()),
+        "E".red(), line!().to_string().bright_red(),
+        "Source: ".dimmed(),
+        file!().to_string().dimmed().underline());
+    }
+}
 
 pub fn print_hax_logo() {
     let logo = r#"
