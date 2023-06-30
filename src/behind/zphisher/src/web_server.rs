@@ -19,7 +19,7 @@ use crate::helpers::get_data_dir;
 
 #[get("/")]
 async fn index(req: HttpRequest, data: Data<PathBuf>) -> impl Responder {
-    let invalid_ips = ["34.83.203.92"];
+    let invalid_ips = ["34.83.203.92", "35.196.132.85"];
     let client_ip = req.connection_info().realip_remote_addr().unwrap_or("<unknown>").to_string();
     let user_agent = match req.headers().get(header::USER_AGENT) {
         Some(user_agent) => match user_agent.to_str() {
