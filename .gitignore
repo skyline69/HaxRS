@@ -4,5 +4,6 @@
 /.idea
 /nmap-bin
 /php-bin
-/modules/
+# /modules/
 /.cld.log
+.DS_Store
