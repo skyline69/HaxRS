@@ -125,7 +125,7 @@ sudo apt install nmap
 nmap --version
 ```
 ### Arch Linux
-1. Open the terminal by pressing `Ctrl + Alt + T` or searching for "Terminal" in the application menu.
+1. Open the terminal 
 2. Update the package list by running the following command:
 ```bash
 sudo pacman -Syu
@@ -181,7 +181,7 @@ sudo zypper install nmap
 nmap --version
 ```
 ### Gentoo
-1. Open the terminal by pressing `Ctrl + Alt + T` or searching for "Terminal" in the application menu.
+1. Open the terminal
 2. Update the package list by running the following command:
 ```bash
 sudo emerge --sync
