@@ -78,11 +78,22 @@ pub fn files_exist(bin_path: &Path) -> bool {
         return true;
     }
 
-    #[cfg(not(target_os = "windows"))] let linux_amd = ["loclx", "cloudflared-linux-amd64"];
-    #[cfg(not(target_os = "windows"))] let linux_intel = ["loclx", "cloudflared-linux-386"];
+    #[cfg(target_os = "linux")] let linux_amd = ["loclx", "cloudflared-linux-amd64"];
+    #[cfg(target_os = "linux")] let linux_intel = ["loclx", "cloudflared-linux-386"];
 
-    #[cfg(not(target_os = "windows"))]
+ 
+    #[cfg(target_os = "macos")] let mac_aarch = ["loclx-darwin-arm64", "cloudflared"];
+    #[cfg(target_os = "macos")] let mac_amd = ["loclx-darwin-amd64", "cloudflared"];
+
+   
+
+
+    #[cfg(target_os = "linux")]
     if linux_amd.iter().all(|x| bin_path.join(x).exists()) | linux_intel.iter().all(|x| bin_path.join(x).exists()) {
+        return true;
+    }
+    #[cfg(target_os = "macos")]
+    if mac_aarch.iter().all(|x| bin_path.join(x).exists()) | mac_amd.iter().all(|x| bin_path.join(x).exists()) {
         return true;
     }
     false
@@ -92,8 +103,10 @@ pub fn get_download_urls<'a>() -> [&'a str; 2] {
     let cloudflare_download_url = match (ARCH, OS) {
         ("x86_64", "linux") => "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64",
         ("aarch64", "linux") => "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-arm64",
+        ("aarch64", "macos") | ("amd64", "macos") => "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-darwin-amd64.tgz",
         (_, "windows") => "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-windows-amd64.exe",
         _ => {
+            println!("{}", ARCH);
             error_msg("Unsupported architecture or OS for Cloudflare");
             exit(1);
         }
@@ -104,6 +117,8 @@ pub fn get_download_urls<'a>() -> [&'a str; 2] {
         ("x86_64", "linux") => "https://api.localxpose.io/api/v2/downloads/loclx-linux-amd64.zip",
         ("aarch64", "linux") => "https://api.localxpose.io/api/v2/downloads/loclx-linux-arm64.zip",
         (_, "windows") => "https://api.localxpose.io/api/v2/downloads/loclx-windows-amd64.zip",
+        ("aarch64", "macos") => "https://api.localxpose.io/api/v2/downloads/loclx-darwin-arm64.zip",
+        ("amd64", "macos") => "https://api.localxpose.io/api/v2/downloads/loclx-darwin-amd64.zip",
         _ => {
             error_msg("Unsupported architecture or OS for LocalXPose");
             exit(1);
@@ -135,6 +150,17 @@ pub fn get_cloudflare_file() -> PathBuf {
                 error_msg!("Failed to get server directory");
                 exit(1);
             }
+        },
+        ("aarch64", "macos") | ("amd64", "macos") => match get_server_dir() {
+            Some(mut server_dir) => {
+                server_dir.push("cloudflared");
+                server_dir
+            }     
+            None => {
+                error_msg!("Failed to get server directory");
+                exit(1);
+            }
+
         }
         (_, "windows") => match get_server_dir() {
             Some(mut server_dir) => {

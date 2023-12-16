@@ -68,7 +68,6 @@ pub async fn selection_1() -> Result<(), TerminalError> {
     log::info!("Fetching IP geolocation information for {}", ip_inp);
     let client = Client::new();
     let response = client.get(&format!("http://ip-api.com/json/{}", ip_inp)).send().await?;
-
     if response.status().is_success() {
         let rg: Value = {
             match response.json().await {
@@ -108,6 +107,7 @@ pub async fn selection_1() -> Result<(), TerminalError> {
         success_msg(&format!("Country: {}", rg["country"].to_string().replace('\"', "")));
         success_msg(&format!("City: {}", rg["city"]).replace('\"', ""));
         success_msg(&format!("Organisation: {}", rg["org"].to_string().replace('\"', "")));
+
 
         if !open_ports.is_empty() {
             for port in open_ports {
@@ -171,4 +171,12 @@ fn run_nmap_scan(ip: &str, port_count: u32) -> Result<String, Box<dyn std::error
         log::info!("Nmap scan output: {}", output_str);
         Ok(output_str)
     }
+     # [cfg(target_os = "macos")]
+    {
+        let output = Command::new("nmap").arg("-Pn").arg("-p").arg(format!("0-{}", port_count)).arg(ip).output()?;
+        let output_str = String::from_utf8_lossy(&output.stdout).into_owned();
+        log::info!("Nmap scan output: {}", output_str);
+        Ok(output_str)
+    }
+    
 }

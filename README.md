@@ -13,6 +13,8 @@
 ### - Port-scanner(Powered by nmap) ✅
 ### - URL-Masker ✅
 ### - Phisher(Powered by ZPhisher) ☑️(WIP 🚧)
+> Note: HaxRS now works on **macOS** too! 🥳
+> 
 <br><br>
 
 <img src="https://user-images.githubusercontent.com/67526259/236820904-73b10112-6094-4938-9d89-85d9cf7811d5.png" alt="For Linux">
@@ -20,13 +22,14 @@
 
 > For Linux Enthusiasts: You **need** to install **`nmap`**.
 
-## How to install and build HaxRS on Linux
-## Quick install
+
+## How to install and build HaxRS on Linux & macOS
+## Quick install (Linux & macOS)
 Copy and paste the following command into your terminal to install HaxRS:
 ```bash
 curl --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/skyline69/HaxRS/main/install.sh | bash
 ```
-## Manual install
+## Manual install (Only for Linux)
 ### Step 1: Install Rust (If you haven't already)
 1. Open the terminal by pressing `Ctrl + Alt + T` or searching for "Terminal" in the application menu.
 2. Install Rust by running the following command:
@@ -73,6 +76,24 @@ Run the project by executing the following command:
 - <a href="#centos">CentOS</a>
 - <a href="#opensuse">OpenSUSE</a>
 - <a href="#gentoo">Gentoo</a>
+
+## How to install `nmap` on macOS
+> You need to have Homebrew installed. If you don't have it installed, you can install it by running the following command:
+```bash
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+```
+
+1. Open the terminal by pressing `Cmd + Space` and searching for "Terminal".
+2. Install `nmap` by running the following command:
+```bash
+brew install nmap
+```
+3. Verify the installation by running the following command:
+```bash
+nmap --version
+```
+
+
 
 ## How to install `nmap` on Linux
 ### Ubuntu

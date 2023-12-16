@@ -24,7 +24,7 @@ pub async fn selection_3() -> Result<(), TerminalError> {
             // Validate the mask domain
             let mask_url = format!("http://{}", mask_domain.trim());  // Temporarily append a scheme for validation
             match url::Url::parse(&mask_url) {
-                Ok(url) => {
+                    Ok(url) => {
                     if url.host_str().map_or(false, |h| h.contains('.')) {
                         println!("{}", "loading...".dimmed().bold());
 

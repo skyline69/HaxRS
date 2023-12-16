@@ -26,4 +26,3 @@ async fn main() -> Result<(), TerminalError> {
     }
     Ok(())
 }
-

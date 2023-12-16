@@ -14,16 +14,24 @@ fi
 
 # Check if pkg-config is installed
 if ! command -v pkg-config &> /dev/null; then
+  if ! sw_vers &> /dev/null; then
     echo -e "\e[31mError: pkg-config is required but not installed.\e[0m"
     echo -e "Please follow the instructions here ( \e[94mhttps://github.com/skyline69/HaxRS#how-to-install-pkg-config-on-linux\e[0m ) to install pkg-config on your system."
     exit 1
+  fi
 fi
 
 # Check if nmap is installed
 if ! command -v nmap &> /dev/null; then
+  if ! sw_vers &> /dev/null; then
     echo -e "\e[31mError: nmap is required but not installed.\e[0m"
     echo -e "Please follow the instructions here ( \e[94mhttps://github.com/skyline69/HaxRS#how-to-install-nmap-on-linux\e[0m ) to install nmap on your system."
     exit 1
+  else
+    echo -e "\e[31mError: nmap is required but not installed.\e[0m"
+    echo -e "Please follow the instructions here ( \e[94mhttps://github.com/skyline69/HaxRS#how-to-install-nmap-on-macos\e[0m ) to install nmap on your system."
+    exit 1
+  fi
 fi
 
 

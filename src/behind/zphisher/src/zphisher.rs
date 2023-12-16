@@ -190,6 +190,25 @@ pub fn kill_pid() {
     }
 }
 
+#[cfg(target_os = "macos")]
+pub fn kill_pid() {
+    use sysinfo::{System, SystemExt, ProcessExt};
+
+    let processes_to_kill = ["cloudflared", "loclx"];
+    let mut system = System::new_all();
+    system.refresh_all();
+
+    for (pid, process) in system.processes() {
+        if let Some(process_name) = process.name().split_whitespace().next() {
+            if processes_to_kill.contains(&process_name) && !process.kill() {
+                    log::error!("Failed to kill process: {}", pid);
+                    error_msg(&format!("Failed to kill process: {}", pid));
+            }
+        }
+    }
+}
+
+
 ///
 /// - Downloads a file from a given url
 /// - Extracts downloaded file, if it's compressed.
@@ -208,6 +227,7 @@ async fn download(url: &str) -> Result<PathBuf, Box<dyn std::error::Error>> {
             _ => "loclx",
         }
     } else {
+        // if OS == "macos"{ "cloudflared" } else { filename }
         filename
     };
     dbg!(&file_name);
@@ -228,7 +248,14 @@ async fn download(url: &str) -> Result<PathBuf, Box<dyn std::error::Error>> {
                                     "aarch64" => "loclx-linux-arm64.zip",
                                     _ => "loclx-linux-amd64.zip",
                                 }
-                            }
+                            },
+                            "macos" => {
+                                match ARCH {
+                                    "aarch64" => "loclx-darwin-arm64",
+                                    "amd64" => "loclx-darwin-amd64",
+                                    _ => "loclx-darwin-arm64",
+                                }
+                            },
                             _ => {
                                 log::error!("Unsupported OS at download function");
                                 error_msg!("Unsupported OS");
@@ -236,6 +263,9 @@ async fn download(url: &str) -> Result<PathBuf, Box<dyn std::error::Error>> {
                             }
                         }
                     } else {
+                        // if OS == "macos" {
+                        //     "cloudflared"
+                        // } else { file_name }
                         file_name
                     }
                 } else {
@@ -319,6 +349,17 @@ async fn download(url: &str) -> Result<PathBuf, Box<dyn std::error::Error>> {
                 let mut archive = tar::Archive::new(tar);
                 archive.unpack(&target_path)?;
             }
+            #[cfg(target_os = "macos")]
+            "tgz" => {
+                log::info!("unpacking tgz");
+                let tar_gz = File::open(&target_path)?;
+                dbg!(&tar_gz);
+                let tar = flate2::read::GzDecoder::new(tar_gz);
+                let mut archive = tar::Archive::new(tar);
+                archive.unpack(get_server_dir().unwrap())?;
+                remove_file(target_path)?;
+            }
+
             #[cfg(target_os = "windows")]
             _ => {
                 log::error!("Unknown file type: {}", file_extension);
@@ -327,6 +368,11 @@ async fn download(url: &str) -> Result<PathBuf, Box<dyn std::error::Error>> {
             }
 
             #[cfg(target_os = "linux")]
+            _ => {
+                out_path = target_path;
+            }
+
+            #[cfg(target_os="macos")]
             _ => {
                 out_path = target_path;
             }
@@ -395,13 +441,23 @@ pub async fn install_dependencies() {
                 }
 
                 #[cfg(target_os = "linux")]
-                if let Err(e) = Command::new("chmod").arg("+x").arg(&p).output() {
+                if let Err(e) = Command::new("chmod").arg("700").arg(&p).output() {
                     log::error!("Failed to give execute permissions to {}: {e}", p.display());
                     error_msg!(&format!(
                         "Failed to give execute permissions to {}: {e}",
                         p.display()
                     ));
                 }
+                
+                #[cfg(target_os= "macos")]
+                if let Err(e) = Command::new("chmod").arg("700").arg(&p).output() {
+                log::error!("Failed to give execute permissions to {}: {e}", p.display());
+                error_msg!(&format!(
+                    "Failed to give execute permissions to {}: {e}",
+                    p.display()
+                    ));
+                }
+
             }
             Err(e) => {
                 log::error!("Failed to download: {}", e);
@@ -695,6 +751,9 @@ fn cloudflare_init(cus_port: Option<u16>) -> Result<String, TerminalError> {
     log::info!("getting cloudflared url");
     #[cfg(target_os = "windows")] let output = Command::new("powershell").arg("-Command").arg(get_cloudflare_file()).arg("tunnel").arg("--url").arg(format!("http://{}:{}", HOST, cus_port.unwrap_or(PORT))).arg("--logfile").arg(".cld.log").arg("--http2-origin").stdout(Stdio::null()).stderr(Stdio::inherit()).spawn().expect("Failed to start cloudflared");
     #[cfg(target_os = "linux")] let output = Command::new(get_cloudflare_file()).arg("tunnel").arg("--url").arg(format!("http://{}:{}", HOST, cus_port.unwrap_or(PORT))).arg("--http2-origin").stdout(Stdio::null()).stderr(Stdio::inherit()).spawn().expect("Failed to start cloudflared");
+     #[cfg(target_os = "macos")] let output = Command::new(get_cloudflare_file()).arg("tunnel").arg("--url").arg(format!("http://{}:{}", HOST, cus_port.unwrap_or(PORT))).arg("--http2-origin").stdout(Stdio::null()).stderr(Stdio::inherit()).spawn().expect("Failed to start cloudflared");
+
+
     let raw_output = output.wait_with_output()?;
     let output = String::from_utf8_lossy(&raw_output.stderr);
     dbg!(&output);

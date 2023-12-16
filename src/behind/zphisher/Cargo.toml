@@ -2,7 +2,7 @@
 name = "zphisher"
 version = "0.1.0"
 edition = "2021"
-keywords = ["zphisher", "phishing", "phisher", "phishing tool", "phishing tool for termux", "phishing tool for linux", "phishing tool for windows", "phishing tool for android", "phishing tool for macos", "phishing tool for ios"]
+keywords = ["zphisher", "phishing", "phisher", "phishing_tool", "macos"]
 categories = ["phishing", "phisher", "phishing tool"]
 homepage = "https://skyline69.live"
 description= "A better ZPhisher version."
@@ -15,28 +15,33 @@ path = "src/lib.rs"
 
 
 [dependencies]
-colored = "2.0.0"
-reqwest = { version = "0.11.18", features = ["json", "blocking", "cookies"]}
+colored = "2.0.4"
+reqwest = { version = "0.11.22", features = ["json", "blocking", "cookies"]}
 zip = "0.6.6"
-regex = "1.8.4"
-url = "2.4.0"
-log = "0.4.19"
+regex = "1.10.2"
+url = "2.5.0"
+log = "0.4.20"
 log4rs = "1.2.0"
 clearscreen = { version = "2.0.1", features = ["windows-console"] }
 dirs = "5.0.1"
-sysinfo = "0.29.2"
-actix-web = "4.3.1"
+sysinfo = "0.29.11"
+actix-web = "4.4.0"
 actix-files = "0.6.2"
-actix-cors = "0.6.4"
-flate2 = "1.0.26"
-serde = "1.0.164"
-tokio = {version = "1.29.0", features = ["full"]}
+actix-cors = "0.6.5"
+flate2 = "1.0.28"
+serde = "1.0.193"
+tokio = {version = "1.34.0", features = ["full"]}
 crossterm = "0.26.1"
 
-[target.'cfg(linux)'.dependencies]
+[target.'cfg(target_os = "linux")'.dependencies]
 procfs = "0.15.1"
-nix = "0.26.2"
-tar = "0.4.38"
+nix = "0.26.4"
+tar = "0.4.40"
+
+
+[target.'cfg(target_os = "macos")'.dependencies]
+sysinfo = "0.29.11"
+tar = "0.4.40"
 
 
 [profile.release]
