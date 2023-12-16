@@ -8,3 +8,4 @@
 /.cld.log
 .DS_Store
 Cargo.lock
+/src/behind/zphisher/Cargo.lock
