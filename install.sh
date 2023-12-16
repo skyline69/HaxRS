@@ -42,7 +42,7 @@ git clone https://github.com/skyline69/HaxRS.git
 cd HaxRS || exit
 
 # move the server files to .haxrs/zphisher/.server directory
-mv modules/zphisher/sites/* "$HOME/.haxrs/zphisher/.server/sites"
+mv -f modules/zphisher/sites/* "$HOME/.haxrs/zphisher/.server/sites"
 cd .. || exit
 
 # Build the application:
