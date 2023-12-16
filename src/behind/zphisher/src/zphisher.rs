@@ -219,7 +219,7 @@ pub fn kill_pid() {
 async fn download(url: &str) -> Result<PathBuf, Box<dyn std::error::Error>> {
     // check in the url if its a loclx file
     let filename: &str = url.split('/').last().unwrap_or("tmp.bin");
-    dbg!(&filename);
+    // dbg!(&filename);
     let file_name = if filename.contains("loclx") {
         match OS {
             "windows" => "loclx.exe",
@@ -230,7 +230,7 @@ async fn download(url: &str) -> Result<PathBuf, Box<dyn std::error::Error>> {
         // if OS == "macos"{ "cloudflared" } else { filename }
         filename
     };
-    dbg!(&file_name);
+    // dbg!(&file_name);
 
 
     log::info!("Downloading {} to {}", url, file_name);
@@ -276,7 +276,7 @@ async fn download(url: &str) -> Result<PathBuf, Box<dyn std::error::Error>> {
     };
 
     let file_extension: &str = target_path.extension().unwrap_or_default().to_str().unwrap_or_default();
-    dbg!(&file_extension);
+    // dbg!(&file_extension);
     log::info!("Target path(download function): {:?}", target_path);
 
     if !target_path.exists() {
@@ -353,7 +353,7 @@ async fn download(url: &str) -> Result<PathBuf, Box<dyn std::error::Error>> {
             "tgz" => {
                 log::info!("unpacking tgz");
                 let tar_gz = File::open(&target_path)?;
-                dbg!(&tar_gz);
+                // dbg!(&tar_gz);
                 let tar = flate2::read::GzDecoder::new(tar_gz);
                 let mut archive = tar::Archive::new(tar);
                 archive.unpack(get_server_dir().unwrap())?;
@@ -756,7 +756,7 @@ fn cloudflare_init(cus_port: Option<u16>) -> Result<String, TerminalError> {
 
     let raw_output = output.wait_with_output()?;
     let output = String::from_utf8_lossy(&raw_output.stderr);
-    dbg!(&output);
+    // dbg!(&output);
 
     let url_regex = Regex::new(r"https://[-0-9a-z]*\.trycloudflare.com").unwrap();
 
@@ -765,7 +765,7 @@ fn cloudflare_init(cus_port: Option<u16>) -> Result<String, TerminalError> {
             return Ok(captures[0].to_string());
         }
     }
-    dbg!(&output);
+    // dbg!(&output);
 
     Err("URL not found".into())
 }
